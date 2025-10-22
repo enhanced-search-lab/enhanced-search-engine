@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: 'Inter', sans-serif;
+}
+
+.gradient-bg {
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+}
+
+.network-dots {
+  background-image: radial-gradient(circle at 1px 1px, rgba(0,0,0,0.15) 1px, transparent 0);
+  background-size: 20px 20px;
+}
+
+.glass-effect {
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.search-button {
+  background: linear-gradient(90deg, #6366f1 0%, #8b5cf6 100%);
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.3);
+  transition: all 0.3s ease;
+}
+.search-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(99, 102, 241, 0.4);
+}
+
+.chip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+}
+
+.paper-card {
+  transition: all .3s ease;
+  border-left: 4px solid transparent;
+}
+.paper-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 25px rgba(0,0,0,.08);
+  border-left-color: #6366f1;
+}
+
+/* Modal Styles */
+.modal-backdrop {
+  backdrop-filter: blur(8px);
+  background: rgba(0,0,0,.45);
+}
+.modal-in {
+  animation: modalIn .24s ease-out;
+}
+@keyframes modalIn {
+  from { opacity:0; transform: translateY(-6px) scale(.98) }
+  to { opacity:1; transform: translateY(0) scale(1) }
+}
