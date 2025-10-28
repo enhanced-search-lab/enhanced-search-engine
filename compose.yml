@@ -1,0 +1,61 @@
+# Compose file version (3.9 works well across Docker versions)
+version: "3.9"
+
+services:
+  # --- PostgreSQL database container ---
+  db:
+    image: postgres:16-alpine        # Small, reliable Postgres image
+    container_name: es_db            # Nice, human-friendly name
+    environment:
+      # Bootstrap credentials for the DB container
+      POSTGRES_DB: appdb
+      POSTGRES_USER: appuser
+      POSTGRES_PASSWORD: apppass
+    volumes:
+      - pgdata:/var/lib/postgresql/data  # Persist database files outside the container
+    ports:
+      - "5432:5432"                  # (Optional) expose to host for local DB tools
+    healthcheck:
+      # Simple healthcheck so backend waits for DB to be ready
+      test: ["CMD-SHELL", "pg_isready -U appuser -d appdb -h 127.0.0.1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped          # Auto-restart on failure
+
+  # --- Django backend container ---
+  backend:
+    build:
+      context: ./backend             # Build using the Dockerfile in backend/
+      dockerfile: Dockerfile
+    container_name: es_backend
+    env_file:
+      - ./backend/.env               # Load your Django env vars (SECRET_KEY, DEBUG, etc.)
+    environment:
+      # These override/augment .env to point Django to the db service
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: appdb
+      DB_USER: appuser
+      DB_PASSWORD: apppass
+      # If you use a DATABASE_URL in settings, you can provide it instead:
+      # DATABASE_URL: postgres://appuser:apppass@db:5432/appdb
+    volumes:
+      - ./backend:/app               # Mount code for hot reload in dev (overrides image copy)
+    command:
+      - sh
+      - -c
+      - |
+          python manage.py collectstatic --noinput &&
+          python manage.py migrate &&
+          python manage.py runserver 0.0.0.0:8000
+    ports:
+      - "8000:8000"                  # Map container port 8000 -> host port 8000
+    depends_on:
+      db:
+        condition: service_healthy   # Wait for the DB healthcheck to pass
+    restart: unless-stopped
+
+# --- Named volumes (persist across container recreations) ---
+volumes:
+  pgdata:
