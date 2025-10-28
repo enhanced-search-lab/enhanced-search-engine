@@ -47,6 +47,8 @@ INSTALLED_APPS = [
     "rest_framework",
     "corsheaders",
     "api",
+    "drf_spectacular",          # OpenAPI schema + Swagger UI
+    "django_filters", 
 ]
 
 MIDDLEWARE = [
@@ -136,3 +138,37 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+# --- 4) DRF global settings ---
+REST_FRAMEWORK = {
+    # auto-generate OpenAPI schema for docs/tests
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+
+    # auth mechanisms (JWT ready; we’ll turn on per-view when we add auth)
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.SessionAuthentication",
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ],
+
+    # default permissions; “AllowAny” keeps endpoints open during development
+    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.AllowAny"],
+
+    # enable ?search=, ?ordering=, and filter backends
+    "DEFAULT_FILTER_BACKENDS": [
+        "django_filters.rest_framework.DjangoFilterBackend",
+        "rest_framework.filters.SearchFilter",
+        "rest_framework.filters.OrderingFilter",
+    ],
+
+    # consistent pagination out-of-the-box (page size 12 fits your cards grid)
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 12,
+}
+
+# --- 5) Swagger / Redoc knobs (used by /schema/ and /docs/) ---
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Paper Search API",
+    "DESCRIPTION": "REST API for searching papers, saving queries, and subscriptions.",
+    "VERSION": "1.0.0",
+}
