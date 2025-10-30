@@ -1,58 +1,61 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 
-const PaperCard = ({ paper }) => {
-    const [isExpanded, setIsExpanded] = useState(false);
+const fmt = (n) => (typeof n === "number" ? n.toLocaleString() : "0");
 
-    const authors = (paper.authors || []).slice(0, 5).join(', ') + ((paper.authors || []).length > 5 ? ` and ${(paper.authors || []).length - 5} more` : '');
-    
-    const clampText = (text, maxLength = 250) => {
-        if (!text) return { short: 'No abstract available.', full: '' };
-        if (text.length <= maxLength) return { short: text, full: '' };
-        return { short: text.slice(0, maxLength) + '…', full: text };
-    };
+export default function PaperCard({ paper }) {
+  const [expanded, setExpanded] = useState(false);
 
-    const { short, full } = clampText(paper.abstract);
+  const authorsText =
+    paper.authors_text || (paper.authors?.length ? paper.authors.slice(0, 6).join(", ") : "");
 
-    return (
-        <div className="paper-card bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-            <div className="flex justify-between items-start mb-4">
-                <div className="flex-1">
-                    <h3 className="text-xl font-semibold text-gray-900 mb-2 leading-tight">
-                        <a href={paper.link} target="_blank" rel="noopener noreferrer" className="hover:text-indigo-600 transition-colors">
-                            {paper.title}
-                        </a>
-                    </h3>
-                    <div className="text-sm text-gray-600 mb-2">
-                        <span className="font-medium">{authors || 'Unknown authors'}</span>
-                        <span className="mx-2">•</span>
-                        <span>{paper.year || '—'}</span>
-                        <span className="mx-2">•</span>
-                        <span className="italic">{paper.venue || '—'}</span>
-                    </div>
-                </div>
-                <div className="flex items-center space-x-2 ml-4 flex-shrink-0">
-                    <div className="bg-gradient-to-r from-emerald-500 to-green-500 text-white text-xs font-bold px-2 py-1 rounded-full">{Math.round((paper.rel || 0) * 100)}%</div>
-                    {paper.oa && <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold px-2 py-1 rounded-full">Open Access</div>}
-                </div>
-            </div>
+  const abs = paper.abstract || "";
+  const needsToggle = abs.length > 260;
+  const shown = expanded ? abs : abs.slice(0, 260);
 
-            <p className="text-gray-700 mb-4 leading-relaxed">
-                {isExpanded ? full : short}
-                {full && (
-                    <button onClick={() => setIsExpanded(!isExpanded)} className="text-indigo-600 hover:text-indigo-800 font-semibold ml-2">
-                        {isExpanded ? 'Show less' : 'Show more'}
-                    </button>
-                )}
-            </p>
-
-            <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                <div className="flex items-center gap-4 text-xs text-gray-500">
-                    <span>💬 {paper.cited?.toLocaleString() || 0} citations</span>
-                    <span>📚 {paper.refs?.toLocaleString() || 0} references</span>
-                </div>
-            </div>
+  return (
+    <article className="result-card">
+      <div className="rc-title">
+        <a href={paper.id || paper.url} target="_blank" rel="noreferrer">{paper.title}</a>
+        <div style={{display:"flex", gap:8}}>
+          {typeof paper.relevance_pct === "number" && (
+            <span className="badge badge-green">{Math.max(0, Math.min(100, paper.relevance_pct))}%</span>
+          )}
+          {paper.is_open_access && (
+            <a href={paper.oa_url || paper.url} target="_blank" rel="noreferrer" className="badge badge-amber">
+              Open Access
+            </a>
+          )}
         </div>
-    );
-};
+      </div>
 
-export default PaperCard;
+      <div className="rc-sub">
+        {authorsText}
+        {paper.year ? <> • {paper.year}</> : null}
+        {paper.venue ? <> • <i>{paper.venue}</i></> : null}
+      </div>
+
+      {abs && (
+        <p className="rc-abs">
+          {shown}
+          {needsToggle && !expanded && "… "}
+          {needsToggle && (
+            <button onClick={() => setExpanded((v) => !v)}> {expanded ? "Show less" : "Show more"}</button>
+          )}
+        </p>
+      )}
+
+      {paper.concepts?.length ? (
+        <div className="concepts">
+          {paper.concepts.slice(0, 8).map((c) => (
+            <span key={c} className="concept">{c}</span>
+          ))}
+        </div>
+      ) : null}
+
+      <div className="rc-footer">
+        <span>🔗 {fmt(paper.cited_by_count)} citations</span>
+        <span>📚 {fmt(paper.references_count)} references</span>
+      </div>
+    </article>
+  );
+}
