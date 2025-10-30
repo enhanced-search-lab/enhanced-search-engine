@@ -56,18 +56,12 @@ const SearchForm = () => {
             return;
         }
         
-        const params = {};
-        nonEmptyAbstracts.forEach(abs => {
-            if (!params.abstract) params.abstract = [];
-            params.abstract.push(abs);
-        });
-        if (keywords.length > 0) {
-            params.keywords = keywords.join(',');
-        }
-
-        navigate({
-            pathname: '/search',
-            search: `?${createSearchParams(params)}`
+        navigate('/search', {
+            state: {
+                abstracts: nonEmptyAbstracts,
+                keywords: keywords,
+                // optionally keep year_min/year_max here later
+            }
         });
     };
 
