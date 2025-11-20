@@ -18,7 +18,7 @@ export default function PaperCard({ paper }) {
         <a href={paper.id || paper.url} target="_blank" rel="noreferrer">{paper.title}</a>
         <div style={{display:"flex", gap:8}}>
           {typeof paper.relevance_pct === "number" && (
-            <span className="badge badge-green">{Math.max(0, Math.min(100, paper.relevance_pct))}%</span>
+            <span className="badge badge-green">{"relevance score: " + paper.relevance_pct}</span>
           )}
           {paper.is_open_access && (
             <a href={paper.oa_url || paper.url} target="_blank" rel="noreferrer" className="badge badge-amber">

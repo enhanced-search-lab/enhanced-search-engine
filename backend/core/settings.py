@@ -48,7 +48,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "api",
     "drf_spectacular",          # OpenAPI schema + Swagger UI
-    "django_filters", 
+    "django_filters"
 ]
 
 MIDDLEWARE = [
@@ -64,6 +64,8 @@ MIDDLEWARE = [
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",  # Vite
     "http://localhost:3000",  # CRA/Next
+     "http://localhost:5174",
+    "http://127.0.0.1:5174",
 ]
 
 
@@ -79,6 +81,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                "django.template.context_processors.request",
             ],
         },
     },
@@ -202,3 +205,22 @@ SPECTACULAR_SETTINGS = {
     "DESCRIPTION": "REST API for searching papers, saving queries, and subscriptions.",
     "VERSION": "1.0.0",
 }
+
+
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+
+#email settings
+EMAIL_HOST = os.environ.get("EMAIL_HOST", "smtp.gmail.com")
+EMAIL_PORT = int(os.environ.get("EMAIL_PORT", 587))
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "your_email@example.com")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "your_email_password")
+EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "True") == "True"
+EMAIL_USE_SSL = os.environ.get("EMAIL_USE_SSL", "False") == "True"
+
+DEFAULT_FROM_EMAIL = os.environ.get(
+    "DEFAULT_FROM_EMAIL",
+    EMAIL_HOST_USER or "appproximaa@gmail.com",
+)
+
+SUBSCRIPTION_FRONTEND_VERIFY_URL = "http://localhost:5174/subscription/verified"
+

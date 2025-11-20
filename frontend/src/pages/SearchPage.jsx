@@ -5,6 +5,7 @@ import SearchResultsList from "../components/SearchResultsList";
 import { searchPapersPOST } from "../services/api";
 
 export default function SearchPage() {
+
   const location = useLocation();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();

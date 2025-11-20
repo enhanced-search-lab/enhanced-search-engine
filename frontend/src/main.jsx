@@ -5,6 +5,8 @@ import Layout from "./components/Layout.jsx";
 import Home from "./pages/Home.jsx";
 import SearchPage from "./pages/SearchPage.jsx";
 import "./index.css";
+import SubscriptionVerifiedPage from './pages/SubscriptionVerifiedPage';
+
 
 const router = createBrowserRouter([
   {
@@ -13,6 +15,10 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <Home /> },
       { path: "search", element: <SearchPage /> },
+      {
+        path: 'subscription/verified',   // 👈 this becomes /subscription/verified
+        element: <SubscriptionVerifiedPage />,
+      },
     ],
   },
 ]);

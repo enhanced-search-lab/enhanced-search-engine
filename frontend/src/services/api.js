@@ -35,3 +35,37 @@ export async function searchPapersPOST({
   }
   return res.json();
 }
+
+// frontend/src/services/api.js
+
+
+
+// services/api.js
+
+// services/api.js
+
+export async function subscribeToSearch(payload) {
+  const res = await fetch(`${API}/subscribe-search/`, {
+    method: "POST",                                // ✅ POST
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),                // ✅ abstracts & keywords in body
+  });
+
+  const raw = await res.text(); // read once
+
+  let data = null;
+  try {
+    data = raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    console.error("Non-JSON response from /subscribe-search/:", raw);
+  }
+
+  if (!res.ok) {
+    const msg =
+      (data && (data.detail || data.error || data.message)) ||
+      `Server error (${res.status})`;
+    throw new Error(msg);
+  }
+
+  return data || { status: "ok" };
+}
