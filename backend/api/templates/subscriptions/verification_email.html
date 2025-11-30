@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Confirm your subscription</title>
+  </head>
+  <body style="font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif; background-color: #f4f4f5; padding: 24px;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 520px; margin: 0 auto; background: #ffffff; border-radius: 12px; padding: 24px;">
+      <tr>
+        <td align="center" style="padding-bottom: 16px;">
+          <div style="font-size: 40px;">📬</div>
+        </td>
+      </tr>
+      <tr>
+        <td style="font-size: 20px; font-weight: 600; text-align: center; padding-bottom: 8px;">
+          Confirm your subscription
+        </td>
+      </tr>
+      <tr>
+        <td style="font-size: 14px; color: #4b5563; text-align: center; padding-bottom: 16px;">
+          You requested weekly updates for:
+          <br />
+          <strong>{{ subscription.query_name }}</strong>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding-bottom: 24px; font-size: 14px; color: #4b5563;">
+          Click the button below to confirm your email address and activate this alert.
+        </td>
+      </tr>
+      <tr>
+        <td align="center" style="padding-bottom: 24px;">
+          <a href="{{ verify_url }}"
+             style="background-color:#4f46e5; color:#ffffff; padding: 10px 20px; border-radius:999px; text-decoration:none; font-weight:500; font-size:14px;">
+            Confirm subscription
+          </a>
+        </td>
+      </tr>
+      <tr>
+        <td style="font-size: 12px; color:#6b7280; border-top:1px solid #e5e7eb; padding-top:16px;">
+          If the button doesn’t work, copy and paste this link into your browser:
+          <br />
+          <a href="{{ verify_url }}" style="color:#4f46e5; word-break: break-all;">{{ verify_url }}</a>
+          <br /><br />
+          If you didn’t request this, you can safely ignore this email.
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

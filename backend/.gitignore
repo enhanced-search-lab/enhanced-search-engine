@@ -1,0 +1,33 @@
+# --- Python / Django ---
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+*.egg
+.venv/
+venv/
+ENV/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.coverage
+htmlcov/
+
+# Local env & settings
+.env
+.env.*.local
+*.local.settings.py
+
+# Static/media (collected/generated locally)
+staticfiles/
+static/
+media/
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
+EOF
