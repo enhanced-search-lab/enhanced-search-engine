@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { searchPapersPOST } from "../services/api";
+import Statistics from '../components/Statistics';
+import ResearchDiscovery from '../components/ResearchDiscovery';
 
 export default function Home() {
   const navigate = useNavigate();
@@ -93,6 +95,14 @@ export default function Home() {
             </button>
           </div>
         </form>
+      </section>
+
+      <section className="container" style={{ marginBottom: 40 }}>
+        <Statistics />
+      </section>
+
+      <section className="container" style={{ marginBottom: 80 }}>
+        <ResearchDiscovery />
       </section>
     </>
   );
