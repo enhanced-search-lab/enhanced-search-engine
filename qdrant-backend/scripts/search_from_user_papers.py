@@ -108,7 +108,12 @@ def print_results(results):
         payload = getattr(point, "payload", None) or {}
         pub_date = payload.get("publication_date")
 
-        print(f"#{rank}  id={point.id}  score={point.score:.4f}")
+        # Display relevance score and open access information if available
+        relevance_score = point.score
+        open_access = payload.get("open_access", "Unknown")
+
+        print(f"#{rank}  id={point.id}  relevance_score={relevance_score:.4f}")
+        print(f"    Open Access: {open_access}")
         if pub_date:
             print(f"    Publication date: {pub_date}")
         print("-" * 60)
@@ -119,14 +124,13 @@ if __name__ == "__main__":
     # Hardcoded for testing; later can be replaced with CLI arguments
     # or data passed from an API.
     seed_abstracts = [
-        "This paper introduces a deep learning model for medical image analysis and diagnosis.",
-        "We investigate artificial intelligence based decision support systems in healthcare.",
+        "car",
+        
     ]
 
     shared_keywords = [
         "artificial intelligence",
-        "medical imaging",
-        "healthcare",
+       
     ]
 
     print("### search_from_user_papers.py is running ###")
