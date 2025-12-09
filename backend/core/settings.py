@@ -102,9 +102,11 @@ WSGI_APPLICATION = 'core.wsgi.application'
 
 import os
 from pathlib import Path
+from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+load_dotenv(BASE_DIR.parent / ".env")
 USE_SQLITE = os.getenv("USE_SQLITE", "1") == "1"  # default to SQLite locally
 
 if USE_SQLITE:

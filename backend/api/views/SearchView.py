@@ -11,11 +11,12 @@ from ..response_serializers.PaperSerializer import PaperResponseSerializer
 from drf_spectacular.utils import extend_schema
 
 import requests
+import os
 
 # Qdrant settings – create_collection.py ile uyumlu olmalı
-QDRANT_HOST = "209.38.203.54"
-QDRANT_PORT = 6333
-QDRANT_COLLECTION = "papers_pq"
+QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
+QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
+QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "qdrant_paper")
 
 # OpenAlex settings
 OPENALEX_BASE = "https://api.openalex.org/works"
@@ -107,7 +108,7 @@ def _semantic_search_openalex(
         return {}
 
     # 2) Qdrant araması
-    client = QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT)
+    client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
     points = _qdrant_search_vector(
         client=client,
         vector=q_vec.tolist(),
