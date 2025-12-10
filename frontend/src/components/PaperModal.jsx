@@ -61,8 +61,15 @@ const PaperModal = ({ paper, onClose }) => {
                     {/* Stats Section */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-6 text-center">
                         <div>
-                            <div className="text-2xl font-bold text-purple-600">{Math.round((paper.rel || 0) * 100)}%</div>
-                            <div className="text-sm text-gray-500 mt-1">Relevance</div>
+                            <div className="text-2xl font-bold text-purple-600">
+                                {paper.per_abstract_sims && paper.per_abstract_sims.length > 0
+                                    ? `${(
+                                        (paper.per_abstract_sims.reduce((a, b) => a + b, 0) /
+                                            paper.per_abstract_sims.length) * 100
+                                      ).toFixed(2)}%`
+                                    : 'N/A'}
+                            </div>
+                            <div className="text-sm text-gray-500 mt-1">Ortalama Benzerlik</div>
                         </div>
                         <div>
                             <div className="text-2xl font-bold text-purple-600">{paper.cited?.toLocaleString() || 0}</div>

@@ -17,7 +17,7 @@ export default function PaperCard({ paper }) {
       <div className="rc-title">
         <a href={paper.url} target="_blank" rel="noreferrer">{paper.title}</a>
         <div style={{ display: "flex", gap: 8 }}>
-          {typeof paper.relevance_pct === "number" && (
+          {paper.per_abstract_sims && paper.per_abstract_sims.length > 0 && (
             <span
               className="badge badge-green"
               style={{
@@ -35,7 +35,11 @@ export default function PaperCard({ paper }) {
                 color: "#fff", /* White text */
               }}
             >
-              {`Relevance: ${paper.relevance_pct.toFixed(2)}%`}
+              {(() => {
+                const avg = paper.per_abstract_sims.reduce((a, b) => a + b, 0) / paper.per_abstract_sims.length;
+                const percentage = (avg * 100).toFixed(2);
+                return `Similarity: ${percentage}%`;
+              })()}
             </span>
           )}
           {paper.is_open_access && (
