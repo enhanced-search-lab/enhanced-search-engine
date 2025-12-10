@@ -37,7 +37,7 @@ export default function Home() {
     }
     setLoading(true);
     try {
-      const data = await searchPapersPOST({ keywords, abstracts: cleanAbstracts, page: 1, per_page: 12 });
+      const data = await searchPapersPOST({ keywords, abstracts: cleanAbstracts, page: 1, per_page: 30 });
       const request = { keywords, abstracts: cleanAbstracts };
       sessionStorage.setItem("lastSearch", JSON.stringify({ request, data }));
       navigate("/search", { state: { request, data } });
@@ -87,7 +87,43 @@ export default function Home() {
               style={{marginBottom:10}}
             />
           ))}
-          <button type="button" className="link-sm" onClick={addAbstract}>+ Add another abstract</button>
+          <div style={{ marginTop: 8, display: "flex", justifyContent: "flex-end" }}>
+            <button
+              type="button"
+              onClick={addAbstract}
+              className="link-sm"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "6px 12px",
+                borderRadius: 999,
+                backgroundColor: "#ffffff",
+                border: "1px solid #e5e7eb",
+                boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+                color: "#4f46e5",
+                fontWeight: 600,
+              }}
+            >
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 24,
+                  height: 24,
+                  borderRadius: "999px",
+                  backgroundColor: "#4f46e5",
+                  color: "#ffffff",
+                  fontWeight: 700,
+                  fontSize: 16,
+                }}
+              >
+                +
+              </span>
+              <span>Add another abstract</span>
+            </button>
+          </div>
 
           <div style={{marginTop:18}}>
             <button type="submit" className="btn-primary" disabled={loading}>
