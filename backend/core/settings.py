@@ -198,7 +198,7 @@ REST_FRAMEWORK = {
 
     # consistent pagination out-of-the-box (page size 12 fits your cards grid)
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
-    "PAGE_SIZE": 12,
+    "PAGE_SIZE": 30,  # Default increased to 30
 }
 
 # --- 5) Swagger / Redoc knobs (used by /schema/ and /docs/) ---

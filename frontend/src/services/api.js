@@ -15,7 +15,7 @@ export async function searchPapersPOST({
   year_min,
   year_max,
   page = 1,
-  per_page = 12,
+  per_page = 30,
 } = {}) {
   const body = {};
   if (abstracts?.length) body.abstracts = abstracts;

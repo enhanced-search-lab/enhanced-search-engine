@@ -26,7 +26,13 @@ class PaperResponseSerializer(serializers.Serializer):
     tags = serializers.ListField(child=serializers.CharField(), required=False)
 
     # Badges / metrics for the card UI
-    relevance_pct = serializers.IntegerField(required=False, allow_null=True)  # 0..100
+    total_score = serializers.FloatField(required=False, allow_null=True)  # Toplam benzerlik skoru
+    per_abstract_sims = serializers.ListField(
+        child=serializers.FloatField(), required=False
+    )
+    per_abstract_contribs = serializers.ListField(
+        child=serializers.FloatField(), required=False
+    )
     cited_by_count = serializers.IntegerField(required=False)
     references_count = serializers.IntegerField(required=False)
     is_open_access = serializers.BooleanField(required=False)
