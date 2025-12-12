@@ -1,3 +1,5 @@
+from typing import List, Dict
+
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
@@ -7,16 +9,14 @@ from ..response_serializers.PaperSerializer import PaperResponseSerializer
 from drf_spectacular.utils import extend_schema
 
 import requests
-import urllib.parse
 
-# Base URL for OpenAlex "works" API
-OPENALEX_BASE = "https://api.openalex.org/works"
+from app.services.openalex_multi_abstract import rerank_openalex_for_abstracts
 
 
 @extend_schema(
     request=SearchRequestSerializer,
     responses=PaperResponseSerializer(many=True),  # paginated wrapper in UI, items are Paper
-    description="Search papers using long abstracts and/or keywords. Use ?page=N for pagination."
+    description="Search for similar papers using multiple abstracts/keywords via OpenAlex + Gemini + embedding re-rank (no Qdrant)."
 )
 class PaperSearchView(APIView):
     """
@@ -24,15 +24,14 @@ class PaperSearchView(APIView):
     Body JSON: { "abstracts": [...], "keywords": [...], "year_min": 2020, "year_max": 2024 }
 
     Behavior:
-      - Validate the JSON body
-      - Build a 'search' query for OpenAlex (title/abstract/fulltext)
-      - Optionally add year filters
-      - Call OpenAlex /works
-      - Map OpenAlex results to a frontend-friendly shape
-      - Return a DRF-like paginated object: { count, next, previous, results, query_summary }
+      - Generate query keywords for each abstract (Gemini + heuristic)
+      - Call OpenAlex with progressive relaxation to fetch candidate works
+      - Build embeddings for each query abstract and each candidate work
+      - Re-rank candidate works by total similarity
+      - Map OpenAlex works to frontend format and attach scores
+      - Return { count, next, previous, results, query_summary }
     """
 
-    # no auth → no CSRF requirement for POST
     authentication_classes = []
     permission_classes = [permissions.AllowAny]
 
@@ -41,190 +40,185 @@ class PaperSearchView(APIView):
         s = SearchRequestSerializer(data=request.data)
         s.is_valid(raise_exception=True)
 
-        # 2) Extract inputs
-        abstracts = s.validated_data.get('abstracts', []) or []
-        keywords = s.validated_data.get('keywords', []) or []
-        year_min = s.validated_data.get('year_min')
-        year_max = s.validated_data.get('year_max')
+        abstracts = s.validated_data.get("abstracts", []) or []
+        keywords = s.validated_data.get("keywords", []) or []
+        year_min = s.validated_data.get("year_min")  # Şu an pipeline'da kullanılmıyor
+        year_max = s.validated_data.get("year_max")  # Şu an pipeline'da kullanılmıyor
 
         if not abstracts and not keywords:
             return Response(
                 {"detail": "At least one of 'abstracts' or 'keywords' must be provided."},
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Build a single OpenAlex search string
-        tokens = []
-        tokens.extend(abstracts)
-        tokens.extend(keywords)
-        search_string = ' '.join(t.strip() for t in tokens if t.strip())
-
-        # 3) Pagination (?page, ?per_page)
+        # 2) Pagination (?page, ?per_page)
         try:
             page = int(request.query_params.get("page", 1))
         except ValueError:
             page = 1
         try:
-            per_page = int(request.query_params.get("per_page", 12))
+            per_page = int(request.query_params.get("per_page", 30))  # Default increased to 30
         except ValueError:
-            per_page = 12
-        per_page = max(1, min(per_page, 200))  # OpenAlex max ~200
+            per_page = 30
 
-        # 4) Optional year filter
-        filters = []
-        if year_min is not None and year_max is not None:
-            filters.append(f"publication_year:{year_min}-{year_max}")
-        elif year_min is not None:
-            filters.append(f"publication_year:>{year_min-1}")
-        elif year_max is not None:
-            filters.append(f"publication_year:<{year_max+1}")
-        filter_param = ",".join(filters) if filters else None
+        page = max(1, page)
+        per_page = max(1, min(per_page, 200))
 
-        # 5) OpenAlex request
-        params = {
-            "search": search_string,
-            "page": page,
-            "per_page": per_page,
-            "sort": "relevance_score:desc",   # ensure relevance_score is present & ranked
-            "mailto": "ceydasen40@gmail.com",
-        }
-        if filter_param:
-            params["filter"] = filter_param
-
+        # 3) Semantic search: OpenAlex + Gemini + embedding re-rank (Qdrant yok)
         try:
-            resp = requests.get(OPENALEX_BASE, params=params, timeout=15)
+            # keywords listesi → raw string
+            user_keywords_raw = ";".join([k for k in keywords if k.strip()])
+
+            # TOP_K: pagination için bir üst sınır (en az sayfa*per_page, en az 300)
+            TOP_K = max(page * per_page, 300)
+
+            scored = rerank_openalex_for_abstracts(
+                abstracts=abstracts,
+                user_keywords_raw=user_keywords_raw,
+                per_group=30,
+                top_k=TOP_K,
+            )
         except requests.RequestException as exc:
             return Response(
                 {"detail": f"Upstream error contacting OpenAlex: {exc}"},
                 status=status.HTTP_502_BAD_GATEWAY,
             )
-
-        if resp.status_code != 200:
+        except Exception as exc:
             return Response(
-                {"detail": "OpenAlex error", "status": resp.status_code, "body": resp.text},
-                status=status.HTTP_502_BAD_GATEWAY,
+                {"detail": f"Semantic search error: {exc}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-        payload = resp.json()
-        results = payload.get("results", []) or []
-        meta = payload.get("meta", {}) or {}
+        if not scored:
+            ser = PaperResponseSerializer([], many=True)
+            return Response({
+                "count": 0,
+                "next": None,
+                "previous": None,
+                "results": ser.data,
+                "query_summary": {
+                    "abstracts_count": len([a for a in abstracts if a.strip()]),
+                    "keywords_count": len([k for k in keywords if k.strip()]),
+                    "page": page,
+                    "per_page": per_page,
+                },
+            })
 
-        # 6) Map OpenAlex work → frontend item
-        def reconstruct_abstract(inv):
-            """Turn OpenAlex abstract_inverted_index into a readable string."""
-            if not isinstance(inv, dict):
-                return inv or ""
-            pairs = []
-            for token, positions in inv.items():
-                for p in positions:
-                    pairs.append((p, token))
-            if not pairs:
-                return ""
-            pairs.sort(key=lambda x: x[0])
-            return " ".join(word for _, word in pairs)
+        # scored: [{ "total_score", "per_abstract_sims", "per_abstract_contribs", "work" }, ...]
+        total_count = len(scored)
 
-        def to_item(w):
-            host_venue       = w.get("host_venue") or {}
-            primary_location = w.get("primary_location") or {}
-            primary_source   = primary_location.get("source") or {}
-            open_access      = w.get("open_access") or {}
-            best_oa_location = w.get("best_oa_location") or {}
-            authorships      = w.get("authorships") or []
-
-            # Authors
-            authors = []
-            for a in authorships:
-                a_author = a.get("author") or {}
-                name = a_author.get("display_name") or ""
-                if name:
-                    authors.append(name)
-
-            # Prefer OA URL if present
-            url = (
-                best_oa_location.get("url")
-                or primary_source.get("url")
-                or host_venue.get("url")
-                or w.get("openalex")
-                or ""
-            )
-
-            # Abstract normalization
-            abstract_field = w.get("abstract")
-            if not abstract_field:
-                inv = w.get("abstract_inverted_index")
-                abstract_field = reconstruct_abstract(inv) if inv else ""
-
-            # Concepts (cap to 10)
-            concepts = []
-            for c in (w.get("concepts") or [])[:10]:
-                name = (c or {}).get("display_name")
-                if name:
-                    concepts.append(name)
-
-            # Metrics / badges
-            cited_by_count   = w.get("cited_by_count", 0)
-            references_count = len(w.get("referenced_works") or [])
-            rel              = w.get("relevance_score")
-            relevance_pct    = round(rel * 100) if isinstance(rel, (int, float)) else None
-            is_oa            = bool(open_access.get("is_oa"))
-            oa_status        = open_access.get("oa_status") or ""
-            oa_url           = best_oa_location.get("url") or ""
-
-            return {
-                "id": w.get("id") or "",
-                "title": w.get("display_name") or "",
-                "abstract": abstract_field,
-                "url": url,
-                "doi": (w.get("doi") or "").replace("https://doi.org/", ""),
-                "venue": host_venue.get("display_name") or "",
-                "year": w.get("publication_year"),
-                "authors": authors,
-                "authors_text": ", ".join(authors[:6]),
-                "concepts": concepts,
-                "tags": [],  # UI compatibility
-                "relevance_pct": relevance_pct,
-                "cited_by_count": cited_by_count,
-                "references_count": references_count,
-                "is_open_access": is_oa,
-                "oa_status": oa_status,
-                "oa_url": oa_url,
-                # legacy alias for your UI if it reads "score"
-                "score": cited_by_count,
-                "created_at": None,
-            }
+        # Basit pagination: scored listesini slice et
+        start_idx = (page - 1) * per_page
+        end_idx = start_idx + per_page
+        page_slice = scored[start_idx:end_idx]
 
         items = []
-        for w in results:
-            try:
-                items.append(to_item(w))
-            except Exception:
-                # skip malformed item safely
-                continue
+        max_score = page_slice[0]["total_score"] if page_slice else 1.0
 
-        # 7) Pagination wrapper
-        total = meta.get("count", 0)
-        current_page = meta.get("page", page)
-        per = meta.get("per_page", per_page)
+        for entry in page_slice:
+            total_sim = entry["total_score"]
+            sims = entry["per_abstract_sims"]
+            contribs = entry["per_abstract_contribs"]
+            work = entry["work"]
 
-        next_url = None
-        prev_url = None
-        if (current_page * per) < total:
-            next_q = {"page": current_page + 1, "per_page": per}
-            next_url = f"?{urllib.parse.urlencode(next_q)}"
-        if current_page > 1:
-            prev_q = {"page": current_page - 1, "per_page": per}
-            prev_url = f"?{urllib.parse.urlencode(prev_q)}"
+            item = self.to_item(work)     
+            item["score"] = total_sim
+
+            # Eğer UI'da göstermek istersen:
+            item["per_abstract_sims"] = sims
+            item["per_abstract_contribs"] = [round(c * 100, 1) for c in contribs]  # % cinsinden
+            item["total_score"] = total_sim  # Ensure total_score is included in the response
+
+            items.append(item)
 
         ser = PaperResponseSerializer(items, many=True)
         return Response({
-            "count": total,
-            "next": next_url,
-            "previous": prev_url,
+            "count": total_count,
+            "next": None,      
+            "previous": None,
             "results": ser.data,
             "query_summary": {
                 "abstracts_count": len([a for a in abstracts if a.strip()]),
                 "keywords_count": len([k for k in keywords if k.strip()]),
-                "page": current_page,
-                "per_page": per,
-            }
+                "page": page,
+                "per_page": per_page,
+            },
         })
+
+    # === Mapping helpers ===
+
+    def to_item(self, w: dict) -> dict:
+        """Maps an OpenAlex work object to the frontend-friendly format."""
+        host_venue       = w.get("host_venue") or {}
+        primary_location = w.get("primary_location") or {}
+        primary_source   = primary_location.get("source") or {}
+        open_access      = w.get("open_access") or {}
+        best_oa_location = w.get("best_oa_location") or {}
+        authorships      = w.get("authorships") or []
+
+        # Authors
+        authors = []
+        for a in authorships:
+            a_author = a.get("author") or {}
+            name = a_author.get("display_name") or ""
+            if name:
+                authors.append(name)
+
+        # Ensure short_id is valid before constructing the URL
+        short_id = (w.get("id") or "").rsplit("/", 1)[-1]
+        url = f"https://openalex.org/{short_id}" if short_id else ""
+
+        # Abstract normalization
+        abstract_field = w.get("abstract")
+        if not abstract_field:
+            inv = w.get("abstract_inverted_index")
+            abstract_field = self.reconstruct_abstract(inv) if inv else ""
+
+        # Concepts (cap to 10)
+        concepts = []
+        for c in (w.get("concepts") or [])[:10]:
+            name = (c or {}).get("display_name")
+            if name:
+                concepts.append(name)
+
+        cited_by_count   = w.get("cited_by_count", 0)
+        references_count = len(w.get("referenced_works") or [])
+
+        # id'yi kısa formda tut (W1234567)
+        short_id = (w.get("id") or "").rsplit("/", 1)[-1]
+
+        return {
+            "id": short_id,
+            "title": w.get("display_name") or "",
+            "abstract": abstract_field,
+            "url": url,
+            "doi": (w.get("doi") or "").replace("https://doi.org/", ""),
+            "venue": host_venue.get("display_name") or "",
+            "year": w.get("publication_year"),
+            "authors": authors,
+            "authors_text": ", ".join(authors[:6]),
+            "concepts": concepts,
+            "tags": [],
+            "relevance_pct": None,  
+            "score": None,          
+            "cited_by_count": cited_by_count,
+            "references_count": references_count,
+            "is_open_access": bool(open_access.get("is_oa")),
+            "oa_status": open_access.get("oa_status") or "",
+            "oa_url": best_oa_location.get("url") or "",
+            "created_at": w.get("created_date"),
+        }
+
+    def reconstruct_abstract(self, inv):
+        """Turn OpenAlex abstract_inverted_index into a readable string."""
+        if not isinstance(inv, dict):
+            return inv or ""
+
+        pairs = []
+        for token, positions in inv.items():
+            for p in positions:
+                pairs.append((p, token))
+        if not pairs:
+            return ""
+        pairs.sort(key=lambda x: x[0])
+        return " ".join(word for _, word in pairs)

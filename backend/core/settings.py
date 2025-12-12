@@ -102,9 +102,11 @@ WSGI_APPLICATION = 'core.wsgi.application'
 
 import os
 from pathlib import Path
+from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+load_dotenv(BASE_DIR.parent / ".env")
 USE_SQLITE = os.getenv("USE_SQLITE", "1") == "1"  # default to SQLite locally
 
 if USE_SQLITE:
@@ -196,7 +198,7 @@ REST_FRAMEWORK = {
 
     # consistent pagination out-of-the-box (page size 12 fits your cards grid)
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
-    "PAGE_SIZE": 12,
+    "PAGE_SIZE": 30,  # Default increased to 30
 }
 
 # --- 5) Swagger / Redoc knobs (used by /schema/ and /docs/) ---

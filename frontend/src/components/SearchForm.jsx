@@ -113,9 +113,13 @@ const SearchForm = () => {
                                     </div>
                                 ))}
                             </div>
-                            <div className="text-right mt-3">
-                                <button onClick={handleAddAbstract} className="px-4 py-2 bg-purple-100 text-purple-700 font-semibold rounded-lg hover:bg-purple-200 transition-all text-sm">
-                                    + Add another abstract
+                            <div className="mt-3 flex justify-end">
+                                <button
+                                    onClick={handleAddAbstract}
+                                    className="inline-flex items-center gap-2 px-4 py-2 bg-white text-purple-700 font-semibold rounded-full border border-purple-200 shadow-sm hover:bg-purple-50 hover:border-purple-400 hover:shadow-md transition-all text-sm"
+                                >
+                                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-600 text-white text-base font-bold">+</span>
+                                    <span>Add another abstract</span>
                                 </button>
                             </div>
                         </div>

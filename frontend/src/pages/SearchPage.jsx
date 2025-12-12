@@ -18,6 +18,7 @@ export default function SearchPage() {
 
   const [request, setRequest] = useState(boot?.request ?? null);
   const [data, setData] = useState(boot?.data ?? null);
+  const [query, setQuery] = useState(boot?.request ?? { abstracts: [], keywords: [] });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -40,11 +41,12 @@ export default function SearchPage() {
 
     setLoading(true);
     setError("");
-    searchPapersPOST({ ...queryFromURL, page, per_page: 12 })
+    searchPapersPOST({ ...queryFromURL, page, per_page: 30 }) // Default increased to 30
       .then((res) => {
-        setRequest(queryFromURL);
-        setData(res);
-        sessionStorage.setItem("lastSearch", JSON.stringify({ request: queryFromURL, data: res }));
+  setRequest(queryFromURL);
+  setData(res);
+  setQuery(queryFromURL);
+  sessionStorage.setItem("lastSearch", JSON.stringify({ request: queryFromURL, data: res }));
       })
       .catch((e) => setError(e.message || "Search failed"))
       .finally(() => setLoading(false));
@@ -56,7 +58,7 @@ export default function SearchPage() {
     setParams(next);
     if (request) {
       setLoading(true);
-      searchPapersPOST({ ...request, page: p, per_page: 12 })
+      searchPapersPOST({ ...request, page: p, per_page: 30 }) // Default increased to 30
         .then((res) => {
           setData(res);
           sessionStorage.setItem("lastSearch", JSON.stringify({ request, data: res }));
@@ -66,29 +68,35 @@ export default function SearchPage() {
   };
 
   const handleQueryUpdate = ({ abstracts, keywords }) => {
+    const safeAbstracts = abstracts || [];
+    const safeKeywords = keywords || [];
+
+    const nextQuery = { abstracts: safeAbstracts, keywords: safeKeywords };
+    // QuerySummary'de gösterilen metni sonuç beklemeden hemen güncelle
+    setQuery(nextQuery);
+
     const next = new URLSearchParams();
-    (abstracts || []).forEach((a) => next.append("abstract", a));
-    if (keywords?.length) next.set("keywords", keywords.join(","));
+    safeAbstracts.forEach((a) => next.append("abstract", a));
+    if (safeKeywords.length) next.set("keywords", safeKeywords.join(","));
     next.set("page", "1");
     setParams(next);
 
     setLoading(true);
-    searchPapersPOST({ abstracts: abstracts || [], keywords: keywords || [], page: 1, per_page: 12 })
+    setError("");
+    searchPapersPOST({ abstracts: safeAbstracts, keywords: safeKeywords, page: 1, per_page: 30 })
       .then((res) => {
-        const req = { abstracts: abstracts || [], keywords: keywords || [] };
-        setRequest(req);
+        setRequest(nextQuery);
         setData(res);
-        sessionStorage.setItem("lastSearch", JSON.stringify({ request: req, data: res }));
+        sessionStorage.setItem("lastSearch", JSON.stringify({ request: nextQuery, data: res }));
       })
+      .catch((e) => setError(e.message || "Search failed"))
       .finally(() => setLoading(false));
   };
-
-  const q = request || queryFromURL || { abstracts: [], keywords: [] };
 
   return (
     <div style={{display:"grid", gap:24}}>
       <QuerySummary
-        query={q}
+        query={query}
         resultCount={data?.count ?? 0}
         summary={data?.query_summary}
         onQueryUpdate={handleQueryUpdate}

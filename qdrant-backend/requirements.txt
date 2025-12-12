@@ -1,0 +1,7 @@
+sentence-transformers
+torch
+qdrant-client
+numpy
+nltk
+requests
+regex
