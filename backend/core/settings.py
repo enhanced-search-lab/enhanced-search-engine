@@ -90,15 +90,7 @@ TEMPLATES = [
 WSGI_APPLICATION = 'core.wsgi.application'
 
 
-# # Database for dockerized deployment
-# # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-# DATABASES = {
-#     "default": dj_database_url.parse(
-#         os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR/'db.sqlite3'}"),
-#         conn_max_age=600,
-#     )
-# }
 
 import os
 from pathlib import Path
@@ -109,25 +101,23 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR.parent / ".env")
 USE_SQLITE = os.getenv("USE_SQLITE", "1") == "1"  # default to SQLite locally
 
-if USE_SQLITE:
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "db.sqlite3",
-        }
-    }
-else:
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.postgresql",
-            "NAME": os.getenv("DB_NAME", "your_db"),
-            "USER": os.getenv("DB_USER", "your_user"),
-            "PASSWORD": os.getenv("DB_PASSWORD", "your_password"),
-            "HOST": os.getenv("DB_HOST", "127.0.0.1"),
-            "PORT": os.getenv("DB_PORT", "5432"),
-        }
-    }
 
+
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.getenv("DB_NAME", "your_db"),
+        "USER": os.getenv("DB_USER", "your_user"),
+        "PASSWORD": os.getenv("DB_PASSWORD", "your_password"),
+        "HOST": os.getenv("DB_HOST", "127.0.0.1"),
+        "PORT": os.getenv("DB_PORT", "5432"),
+    }
+}
+
+SUBSCRIPTION_FRONTEND_MANAGE_URL = os.getenv(
+    "SUBSCRIPTION_FRONTEND_MANAGE_URL",
+    "http://localhost:5174/subscriptions/manage",
+)
 
 
 

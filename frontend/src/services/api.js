@@ -69,3 +69,28 @@ export async function subscribeToSearch(payload) {
 
   return data || { status: "ok" };
 }
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+
+export async function getSubscriptionsByToken(token) {
+  const res = await fetch(`${API_BASE}/api/subscriber/subscriptions/?token=${encodeURIComponent(token)}`);
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to load subscriptions (${res.status}): ${text}`);
+  }
+  return res.json();
+}
+
+export async function unsubscribeSubscription(id, token) {
+  const res = await fetch(
+    `${API_BASE}/api/subscriptions/${id}/unsubscribe/?token=${encodeURIComponent(token)}`,
+    {
+      method: "POST",
+    }
+  );
+  if (!res.ok && res.status !== 204) {
+    const text = await res.text();
+    throw new Error(`Failed to unsubscribe (${res.status}): ${text}`);
+  }
+  return true;
+}

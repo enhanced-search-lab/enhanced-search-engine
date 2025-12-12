@@ -6,7 +6,7 @@ import Home from "./pages/Home.jsx";
 import SearchPage from "./pages/SearchPage.jsx";
 import "./index.css";
 import SubscriptionVerifiedPage from './pages/SubscriptionVerifiedPage';
-
+import ManageSubscriptionsPage from "./pages/ManageSubscriptionsPage.jsx";
 
 const router = createBrowserRouter([
   {
@@ -18,6 +18,10 @@ const router = createBrowserRouter([
       {
         path: 'subscription/verified',   // 👈 this becomes /subscription/verified
         element: <SubscriptionVerifiedPage />,
+      },
+      {
+        path: "subscriptions/manage",        // 🆕 bu da /subscriptions/manage oluyor
+        element: <ManageSubscriptionsPage />,
       },
     ],
   },

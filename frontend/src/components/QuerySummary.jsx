@@ -124,7 +124,17 @@ export default function QuerySummary({ query, resultCount, summary, onQueryUpdat
         currentQuery={{ abstracts, keywords }}
         onApply={handleQueryUpdate}
       />
-      <SubscribeModal isOpen={isSubscribeModalOpen} onClose={() => setSubscribeModalOpen(false)} />
+
+      <SubscribeModal
+        isOpen={isSubscribeModalOpen}
+        onClose={() => setSubscribeModalOpen(false)}
+        initialQueryName={summary?.query_name || "Saved search"}
+        queryParams={{
+          abstracts,
+          keywords,
+        }}
+      />
+      
     </>
   );
 }

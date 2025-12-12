@@ -9,8 +9,13 @@ from ..response_serializers.PaperSerializer import PaperResponseSerializer
 from drf_spectacular.utils import extend_schema
 
 import requests
+import os
 
 from app.services.openalex_multi_abstract import rerank_openalex_for_abstracts
+
+# OpenAlex settings
+OPENALEX_BASE = "https://api.openalex.org/works"
+MAILTO = os.getenv("OPENALEX_MAILTO", "ceydasen40@gmail.com")
 
 
 @extend_schema(

@@ -24,3 +24,18 @@ class SubscriptionCreateSerializer(serializers.ModelSerializer):
                 "You must agree to receive email notifications."
             )
         return value
+
+
+# 🆕 Manage page listesi için basit serializer
+class SubscriptionListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Subscription
+        fields = [
+            "id",
+            "query_name",
+            "abstracts",
+            "keywords",
+            "is_verified",
+            "is_active",
+            "created_at",
+        ]
