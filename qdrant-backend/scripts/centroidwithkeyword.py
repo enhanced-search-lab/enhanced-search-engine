@@ -3,6 +3,7 @@ import sys
 from pathlib import Path
 from typing import List, Tuple, Dict
 import collections
+import argparse
 import re
 import random
 
@@ -280,19 +281,49 @@ def fetch_with_progressive_relaxation(tokens: List[str], per_page: int = 30, min
 # =========================== MAIN PIPELINE ==========================
 
 def main() -> None:
-    # Usage: python updated_rerank_openalex.py "abstract 1" "abstract 2" ...
-    if len(sys.argv) < 2:
-        print("Usage: python updated_rerank_openalex.py \"abstract 1\" \"abstract 2\" ...")
-        sys.exit(1)
+    """
+    Usage örneği:
 
-    # CLI'den gelen bütün argümanları abstract kabul ediyoruz
-    abstracts = sys.argv[1:]
+    python centroidwithkeyword.py \
+      --keywords "molecular communication; nanonetworks; terahertz band; wireless sensor networks; energy harvesting" \
+      "Abstract 1 metni ..." \
+      "Abstract 2 metni ..."
+    """
+
+    parser = argparse.ArgumentParser(
+        description="Re-rank OpenAlex works based on multiple abstracts (and optional user keywords) using a single centroid query embedding."
+    )
+    parser.add_argument(
+        "--keywords",
+        type=str,
+        default="",
+        help="Optional user keywords/phrases (separate with ';' or ',')."
+    )
+    parser.add_argument(
+        "abstracts",
+        nargs="+",
+        help="One or more abstracts as positional arguments."
+    )
+    args = parser.parse_args()
+
+    # CLI'den gelenler
+    abstracts: List[str] = args.abstracts
+    user_keywords_raw: str = args.keywords.strip()
     max_terms = 3
 
-    # Gerçekte bunlar API'den gelecek: frontend'deki "Keywords" kutusu
-    user_keywords: List[str] = []  # örn: ["molecular communication", "nanonetworks"]
+    # --keywords string → liste
+    # Örn: "a; b, c" → ["a", "b", "c"]
+    user_keywords: List[str] = []
+    if user_keywords_raw:
+        user_keywords = [
+            tok.strip()
+            for tok in re.split(r"[;,]", user_keywords_raw)
+            if tok.strip()
+        ]
 
     print(f"\nReceived {len(abstracts)} abstracts.\n")
+    if user_keywords:
+        print(f"User keywords: {user_keywords}\n")
 
     # 1) Her abstract için 2–3 keyword/phrase çıkar (Gemini + fallback)
     all_keyword_lists: List[List[str]] = []
@@ -324,7 +355,6 @@ def main() -> None:
         return
 
     # 2) Pozisyona göre grupla:
-    #    1. phrase'ler bir grup, 2.'ler başka grup, 3.'ler başka...
     num_positions = max(len(kws) for kws in all_keyword_lists)
     print(f"Max keyword/phrase positions across abstracts: {num_positions}\n")
 
@@ -355,17 +385,16 @@ def main() -> None:
         print(f"=== Position {pos+1} initial phrases ===")
         print(f"Phrases: {group_tokens}\n")
 
-        # 1) Progressive relaxation ile sonuç çekmeye çalış
+        # Progressive relaxation ile OpenAlex'ten aday toplama
         works, final_query = fetch_with_progressive_relaxation(
             tokens=group_tokens,
             per_page=30,
-            min_terms=1,   # istersen 2 yapıp tek phrase'e kadar düşmesini engelleyebilirsin
+            min_terms=1,
         )
 
         print(f"Final query used at position {pos+1}: \"{final_query}\"")
         print(f"Total works collected for this position: {len(works)}\n")
 
-        # 2) Bu pozisyon için bulunan tüm makaleleri ID'ye göre dedup et
         for w in works:
             wid = w.get("id")
             if not wid:
@@ -374,7 +403,7 @@ def main() -> None:
 
     print(f"Total unique candidate works collected (from abstracts): {len(all_works_by_id)}\n")
 
-    # 3) Kullanıcı keyword'leri varsa, ayrıca bir grup olarak kullan
+    # 3) Kullanıcı keyword'leri varsa, ayrıca grup olarak kullan
     if user_keywords:
         print("=== Extra group: USER KEYWORDS ===")
         print(f"User keywords: {user_keywords}\n")
@@ -435,7 +464,7 @@ def main() -> None:
     # Similarity'ye göre sırala
     scored.sort(key=lambda x: x[0], reverse=True)
 
-    # 6) 30x3 ≈ 90 senaryosu için top 90'ı al ve yazdır
+    # 30x3 ≈ 90 senaryosu için top 90'ı al ve yazdır
     TOP_K = 90
     print(f"=== Re-ranked results by single query embedding (top {TOP_K}) ===")
     for rank, (sim, wid, title) in enumerate(scored[:TOP_K], start=1):
