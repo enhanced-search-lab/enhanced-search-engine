@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import QuerySummary from "../components/QuerySummary";
 import SearchResultsList from "../components/SearchResultsList";
-import { searchPapersPOST } from "../services/api";
 import SubscribeModal from "../components/modals/SubscribeModal";
 import EvalFeedback from "../components/EvalFeedback";
 import {
@@ -260,9 +259,8 @@ export default function SearchPage() {
         onQueryUpdate={handleQueryUpdate}
         onSubscribeClick={() => setSubscribeOpen(true)}
       />
-      <SearchResultsList results={data?.results || []} loading={loading} error={error} />
-        hideSimilarity={false}
-      />
+      <SearchResultsList results={data?.results || []} loading={loading} error={error} hideSimilarity={false} />
+        
 
     {SHOW_EVAL ? (
       !allReady ? (
