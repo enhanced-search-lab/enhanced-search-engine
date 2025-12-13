@@ -1,6 +1,3 @@
-# Compose file version (3.9 works well across Docker versions)
-version: "3.9"
-
 services:
   # --- PostgreSQL database container ---
   db:
@@ -54,6 +51,23 @@ services:
     depends_on:
       db:
         condition: service_healthy   # Wait for the DB healthcheck to pass
+    restart: unless-stopped
+
+  # --- Frontend (Vite build served by Nginx) ---
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: es_frontend
+    environment:
+      # Point frontend API calls to the backend service inside the Docker network
+      VITE_API_URL: "http://backend:8000"
+      # Eval UI'ini Docker uzerinden ac/kapatmak icin
+      VITE_SHOW_EVAL: "false"
+    depends_on:
+      - backend
+    ports:
+      - "5173:80"   # Expose Nginx (80) as 5173 on host
     restart: unless-stopped
 
 # --- Named volumes (persist across container recreations) ---
