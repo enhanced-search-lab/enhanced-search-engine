@@ -260,7 +260,7 @@ export default function SearchPage() {
         onSubscribeClick={() => setSubscribeOpen(true)}
       />
       <SearchResultsList results={data?.results || []} loading={loading} error={error} hideSimilarity={false} />
-        
+      
 
     {SHOW_EVAL ? (
       !allReady ? (
