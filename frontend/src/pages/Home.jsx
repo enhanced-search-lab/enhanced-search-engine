@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { searchPapersPOST } from "../services/api";
+import { searchPapersPOST, searchOpenAlexKeywordPOST } from "../services/api";
 import Statistics from '../components/Statistics';
 import ResearchDiscovery from '../components/ResearchDiscovery';
 
@@ -37,10 +37,20 @@ export default function Home() {
     }
     setLoading(true);
     try {
+      // Ana embedding tabanlı arama (asıl sıralama buradan geliyor)
       const data = await searchPapersPOST({ keywords, abstracts: cleanAbstracts, page: 1, per_page: 30 });
+
       const request = { keywords, abstracts: cleanAbstracts };
       sessionStorage.setItem("lastSearch", JSON.stringify({ request, data }));
-      navigate("/search", { state: { request, data } });
+
+      // SearchPage'in hem embed hem raw OpenAlex aramasını tetiklemesi için
+      // aynı query'yi URL parametrelerine yaz.
+      const params = new URLSearchParams();
+      cleanAbstracts.forEach((a) => params.append("abstract", a));
+      if (keywords.length) params.set("keywords", keywords.join(","));
+      params.set("page", "1");
+
+      navigate(`/search?${params.toString()}`, { state: { request, data } });
     } catch (err) {
       console.error("[Search] failed:", err);
       alert("Search failed. Check console for details.");
