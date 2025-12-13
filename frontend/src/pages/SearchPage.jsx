@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import QuerySummary from "../components/QuerySummary";
 import SearchResultsList from "../components/SearchResultsList";
+import SubscribeModal from "../components/modals/SubscribeModal";
 import EvalFeedback from "../components/EvalFeedback";
 import {
   searchPapersPOST,
@@ -20,6 +21,8 @@ export default function SearchPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
+  const [subscribeOpen, setSubscribeOpen] = useState(false);
+
 
   const boot =
     location.state ??
@@ -224,6 +227,28 @@ export default function SearchPage() {
     }
   };
 
+  const queryParamsForSubscription = useMemo(() => {
+  // Öncelik backend'in gönderdiği query_summary'de
+  if (data?.query_summary) {
+    return {
+      abstracts: data.query_summary.abstracts || request?.abstracts || [],
+      keywords: data.query_summary.keywords || request?.keywords || [],
+    };
+  }
+
+  // Eğer query_summary yoksa, en azından request'i kullan
+  if (request) {
+    return {
+      abstracts: request.abstracts || [],
+      keywords: request.keywords || [],
+    };
+  }
+
+  // Hiçbiri yoksa boş
+  return { abstracts: [], keywords: [] };
+}, [data, request]);
+
+
   return (
     <div style={{display:"grid", gap:24}}>
       <QuerySummary
@@ -232,8 +257,10 @@ export default function SearchPage() {
         resultCount={SHOW_EVAL ? 0 : (data?.count ?? 0)}
         summary={data?.query_summary}
         onQueryUpdate={handleQueryUpdate}
-        hideSimilarity={false}
+        onSubscribeClick={() => setSubscribeOpen(true)}
       />
+      <SearchResultsList results={data?.results || []} loading={loading} error={error} hideSimilarity={false} />
+      
 
     {SHOW_EVAL ? (
       !allReady ? (
@@ -313,6 +340,19 @@ export default function SearchPage() {
           )}
         </div>
       )}
+      
+    {/* ⭐️ Modal tek bir yerde, tüm sayfa için ortak */}
+    <SubscribeModal
+      isOpen={subscribeOpen}
+      onClose={() => setSubscribeOpen(false)}
+      initialQueryName={data?.query_summary?.query_name || "Saved search"}
+      queryParams={queryParamsForSubscription}
+    />
+
+      
     </div>
+
+
+
   );
 }
