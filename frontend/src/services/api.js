@@ -36,13 +36,54 @@ export async function searchPapersPOST({
   return res.json();
 }
 
-// frontend/src/services/api.js
+// Raw OpenAlex keyword-only search for comparison/debugging.
+// POST /api/openalex-keyword-search/
+// body: { keywords: string[] | string, per_page?: number }
+// returns: { query, keywords, count, results[] }
+export async function searchOpenAlexKeywordPOST({
+  keywords = [],
+  per_page = 30,
+} = {}) {
+  const body = { keywords, per_page };
 
+  const res = await fetch(`${API}/openalex-keyword-search/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
 
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`OpenAlex keyword search failed (${res.status}): ${text}`);
+  }
 
-// services/api.js
+  return res.json();
+}
 
-// services/api.js
+// OpenAlex search based on Gemini-extracted phrases from abstracts + user keywords.
+// POST /api/openalex-gemini-keyword-search/
+// body: { abstracts: string[] | string, keywords: string[] | string, per_page?: number }
+// returns: { count, results[], query: { abstracts, keywords } }
+export async function searchOpenAlexGeminiPOST({
+  abstracts = [],
+  keywords = [],
+  per_page = 30,
+} = {}) {
+  const body = { abstracts, keywords, per_page };
+
+  const res = await fetch(`${API}/openalex-gemini-keyword-search/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`OpenAlex Gemini keyword search failed (${res.status}): ${text}`);
+  }
+
+  return res.json();
+}
 
 export async function subscribeToSearch(payload) {
   const res = await fetch(`${API}/subscribe-search/`, {
@@ -65,6 +106,30 @@ export async function subscribeToSearch(payload) {
       (data && (data.detail || data.error || data.message)) ||
       `Server error (${res.status})`;
     throw new Error(msg);
+  }
+
+  return data || { status: "ok" };
+}
+
+// POST /api/eval-feedback/
+// body: { query: { abstracts, keywords }, choice: "left"|"right"|"both"|"none", comment?: string }
+export async function sendEvalFeedback(payload) {
+  const res = await fetch(`${API}/eval-feedback/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  const raw = await res.text().catch(() => "");
+  let data = null;
+  try {
+    data = raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    // non-JSON response is fine, treat as generic ok
+  }
+
+  if (!res.ok) {
+    throw new Error(data?.detail || `Eval feedback failed (${res.status})`);
   }
 
   return data || { status: "ok" };

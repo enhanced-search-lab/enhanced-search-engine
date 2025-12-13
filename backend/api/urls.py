@@ -6,6 +6,9 @@ from rest_framework.routers import DefaultRouter
 # from .views.PaperViewSet import PaperViewSet
 # from .views.TagViewSet import TagViewSet
 from .views.SearchView import PaperSearchView as SearchView
+from .views.OpenAlexKeywordSearchView import OpenAlexKeywordSearchView
+from .views.OpenAlexGeminiKeywordSearchView import OpenAlexGeminiKeywordSearchView
+from .views.EvalFeedbackView import EvalFeedbackView
 from .views.SubscriptionsView import SubscriptionCreateView, SubscriptionVerifyView
 
 # Build RESTful routes (list/detail) for built-in resources
@@ -17,6 +20,9 @@ router = DefaultRouter()
 urlpatterns = [
     path("", include(router.urls)),
     path("search/", SearchView.as_view()),
+    path("openalex-keyword-search/", OpenAlexKeywordSearchView.as_view()),
+    path("openalex-gemini-keyword-search/", OpenAlexGeminiKeywordSearchView.as_view()),
+    path("eval-feedback/", EvalFeedbackView.as_view()),
     path(
         "subscribe-search/",
         SubscriptionCreateView.as_view(),

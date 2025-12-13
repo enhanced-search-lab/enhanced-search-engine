@@ -2,7 +2,8 @@ import React, { useState } from "react";
 
 const fmt = (n) => (typeof n === "number" ? n.toLocaleString() : "0");
 
-export default function PaperCard({ paper }) {
+// hideSimilarity: evaluation modunda similarity badge'ini gizlemek için opsiyonel flag
+export default function PaperCard({ paper, hideSimilarity = false }) {
   const [expanded, setExpanded] = useState(false);
 
   const authorsText =
@@ -17,7 +18,7 @@ export default function PaperCard({ paper }) {
       <div className="rc-title">
         <a href={paper.url} target="_blank" rel="noreferrer">{paper.title}</a>
         <div style={{ display: "flex", gap: 8 }}>
-          {paper.per_abstract_sims && paper.per_abstract_sims.length > 0 && (
+          {!hideSimilarity && paper.per_abstract_sims && paper.per_abstract_sims.length > 0 && (
             <span
               className="badge badge-green"
               style={{
