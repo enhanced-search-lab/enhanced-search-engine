@@ -259,8 +259,16 @@ export default function SearchPage() {
         onQueryUpdate={handleQueryUpdate}
         onSubscribeClick={() => setSubscribeOpen(true)}
       />
-      <SearchResultsList results={data?.results || []} loading={loading} error={error} hideSimilarity={false} />
-      
+      {/* Normal modda tek sütun; eval modda aşağıdaki üçlü layout gösterilecek */}
+      {!SHOW_EVAL && (
+        <SearchResultsList
+          results={data?.results || []}
+          loading={loading}
+          error={error}
+          hideSimilarity={false}
+        />
+      )}
+
 
     {SHOW_EVAL ? (
       !allReady ? (
