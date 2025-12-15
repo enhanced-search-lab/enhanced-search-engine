@@ -4,6 +4,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import {
   getSubscriptionsByToken,
   unsubscribeSubscription,
+  toggleSubscriptionActive,
 } from "../services/api";
 
 export default function ManageSubscriptionsPage() {
@@ -17,9 +18,13 @@ export default function ManageSubscriptionsPage() {
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState(null);
 
+  // per-subscription expanded state for abstracts (array of indexes)
+  const [expandedAbstracts, setExpandedAbstracts] = useState({});
+
   // modal için
   const [confirmingSub, setConfirmingSub] = useState(null);
   const [confirmLoading, setConfirmLoading] = useState(false);
+  const [confirmMode, setConfirmMode] = useState("toggle"); // 'toggle' or 'delete'
 
   const loadSubscriptions = useCallback(async () => {
     if (!token) return;
@@ -92,7 +97,7 @@ export default function ManageSubscriptionsPage() {
 
           {!loading && !error && subs.length === 0 && (
             <p className="text-slate-600">
-              You don&apos;t have any active subscriptions.
+              You don&apos;t have any subscriptions.
             </p>
           )}
 
@@ -101,7 +106,9 @@ export default function ManageSubscriptionsPage() {
               {subs.map((sub) => (
                 <li
                   key={sub.id}
-                  className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-4 shadow-sm"
+                  className={`relative rounded-2xl border border-slate-200 bg-white/80 px-4 py-4 shadow-sm ${
+                    !sub.is_active ? "opacity-60" : ""
+                  }`}
                 >
                   <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                     <div className="flex-1">
@@ -117,17 +124,48 @@ export default function ManageSubscriptionsPage() {
                           <div className="text-[11px] uppercase tracking-wide text-slate-500 mb-1">
                             Abstracts
                           </div>
-                          <ul className="space-y-1 text-sm text-slate-700">
-                            {sub.abstracts.slice(0, 2).map((a, i) => (
-                              <li key={i} className="line-clamp-2">
-                                • {a}
-                              </li>
-                            ))}
-                            {sub.abstracts.length > 2 && (
-                              <li className="text-xs text-slate-500">
-                                (+{sub.abstracts.length - 2} more)
-                              </li>
-                            )}
+
+                          {/* NOTE: only spacing adjusted (space-y-2) for cleaner look */}
+                          <ul className="list-disc pl-5 space-y-2 text-sm text-slate-700">
+                            {sub.abstracts.map((a, i) => {
+                              const isExpanded = (expandedAbstracts[sub.id] || []).includes(i);
+                              const needsToggle = (a || "").length > 220; // heuristic for truncation
+
+                              return (
+                                <li key={i} className="mb-1">
+                                  {/* NOTE: only added "text-justify" to make abstracts look aligned/clean */}
+                                  <div
+                                    className={
+                                      isExpanded
+                                        ? "rc-abs whitespace-normal break-words text-sm text-slate-700 text-justify"
+                                        : "rc-abs line-clamp-3 text-sm text-slate-700 text-justify"
+                                    }
+                                  >
+                                    {a}
+                                  </div>
+
+                                  {needsToggle && (
+                                    <div className="text-xs text-slate-500 mt-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setExpandedAbstracts((prev) => {
+                                            const arr = (prev[sub.id] || []).slice();
+                                            const idx = arr.indexOf(i);
+                                            if (idx >= 0) arr.splice(idx, 1);
+                                            else arr.push(i);
+                                            return { ...prev, [sub.id]: arr };
+                                          });
+                                        }}
+                                        className="underline text-indigo-600 hover:text-indigo-800"
+                                      >
+                                        {isExpanded ? "Show less" : "Show more"}
+                                      </button>
+                                    </div>
+                                  )}
+                                </li>
+                              );
+                            })}
                           </ul>
                         </div>
                       )}
@@ -164,31 +202,48 @@ export default function ManageSubscriptionsPage() {
 
                       <button
                         type="button"
-                        onClick={() => setConfirmingSub(sub)} // 👈 modal aç
+                        onClick={() => {
+                          setConfirmMode("toggle");
+                          setConfirmingSub(sub);
+                        }}
                         disabled={busyId === sub.id}
                         className="inline-flex items-center rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
                       >
-                        {busyId === sub.id ? "Removing…" : "Unsubscribe"}
+                        {busyId === sub.id
+                          ? sub.is_active
+                            ? "Removing…"
+                            : "Activating…"
+                          : sub.is_active
+                          ? "Unsubscribe"
+                          : "Reactivate"}
                       </button>
                     </div>
+                  </div>
+                  {/* absolute-positioned delete button (bottom-right) */}
+                  <div className="absolute right-4 bottom-4">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setConfirmMode("delete");
+                        setConfirmingSub(sub);
+                      }}
+                      disabled={busyId === sub.id}
+                      className="inline-flex items-center rounded-full px-3 py-1.5 text-xs font-medium text-white bg-rose-600 hover:bg-rose-700 disabled:opacity-60"
+                    >
+                      Delete
+                    </button>
                   </div>
                 </li>
               ))}
             </ul>
           )}
 
-          <div className="mt-8 flex flex-wrap gap-3">
+          <div className="mt-8 flex justify-center">
             <button
               onClick={() => navigate("/")}
-              className="inline-flex items-center rounded-full border border-slate-200 px-5 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
-            >
-              Go to homepage
-            </button>
-            <button
-              onClick={() => navigate("/search")}
               className="inline-flex items-center rounded-full bg-violet-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-violet-700"
             >
-              Go to search
+              Go to homepage
             </button>
           </div>
         </div>
@@ -203,24 +258,23 @@ export default function ManageSubscriptionsPage() {
           />
           <div className="relative w-full max-w-md rounded-2xl bg-white shadow-2xl p-6">
             <h2 className="text-lg font-semibold text-slate-900 mb-2">
-              Unsubscribe from this search?
+              {confirmMode === "delete" ? "Delete subscription permanently?" : "Unsubscribe from this search?"}
             </h2>
             <p className="text-sm text-slate-600 mb-3">
-              You will stop receiving weekly suggestions for:
+              {confirmMode === "delete" ? "This will permanently remove the subscription and cannot be undone." : "You will stop receiving weekly suggestions for:"}
             </p>
             <p className="text-sm font-medium text-slate-900 bg-slate-50 rounded-xl px-3 py-2 mb-4">
               {confirmingSub.query_name}
             </p>
 
-            {confirmingSub.keywords &&
-              confirmingSub.keywords.length > 0 && (
-                <p className="text-xs text-slate-500 mb-4">
-                  Keywords:&nbsp;
-                  <span className="font-medium">
-                    {confirmingSub.keywords.join(", ")}
-                  </span>
-                </p>
-              )}
+            {confirmingSub.keywords && confirmingSub.keywords.length > 0 && (
+              <p className="text-xs text-slate-500 mb-4">
+                Keywords:&nbsp;
+                <span className="font-medium">
+                  {confirmingSub.keywords.join(", ")}
+                </span>
+              </p>
+            )}
 
             <div className="flex justify-end gap-3 mt-2">
               <button
@@ -231,29 +285,69 @@ export default function ManageSubscriptionsPage() {
               >
                 Cancel
               </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  try {
-                    setConfirmLoading(true);
-                    setBusyId(confirmingSub.id);
-                    await unsubscribeSubscription(confirmingSub.id, token);
-                    setSubs((prev) =>
-                      prev.filter((s) => s.id !== confirmingSub.id)
-                    );
-                    setConfirmingSub(null);
-                  } catch (err) {
-                    alert(err.message || "Failed to unsubscribe.");
-                  } finally {
-                    setConfirmLoading(false);
-                    setBusyId(null);
-                  }
-                }}
-                disabled={confirmLoading}
-                className="px-4 py-2 rounded-full bg-rose-600 text-sm font-medium text-white hover:bg-rose-700 disabled:opacity-60"
-              >
-                {confirmLoading ? "Removing…" : "Yes, unsubscribe"}
-              </button>
+              {confirmMode === "delete" ? (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      setConfirmLoading(true);
+                      setBusyId(confirmingSub.id);
+                      // call delete API
+                      // import deleteSubscription lazily to avoid circular import issues
+                      const { deleteSubscription } = await import("../services/api");
+                      await deleteSubscription(confirmingSub.id, token);
+                      setSubs((prev) => prev.filter((s) => s.id !== confirmingSub.id));
+                      setConfirmingSub(null);
+                    } catch (err) {
+                      alert(err.message || "Failed to delete subscription.");
+                    } finally {
+                      setConfirmLoading(false);
+                      setBusyId(null);
+                    }
+                  }}
+                  disabled={confirmLoading}
+                  className="px-4 py-2 rounded-full text-sm font-medium text-white bg-rose-600 hover:bg-rose-700 disabled:opacity-60"
+                >
+                  {confirmLoading ? "Deleting…" : "Delete permanently"}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      setConfirmLoading(true);
+                      setBusyId(confirmingSub.id);
+                      const updated = await toggleSubscriptionActive(
+                        confirmingSub.id,
+                        token
+                      );
+                      setSubs((prev) =>
+                        prev.map((s) => (s.id === updated.id ? updated : s))
+                      );
+                      setConfirmingSub(null);
+                    } catch (err) {
+                      alert(err.message || "Failed to update subscription state.");
+                    } finally {
+                      setConfirmLoading(false);
+                      setBusyId(null);
+                    }
+                  }}
+                  disabled={confirmLoading}
+                  className={`px-4 py-2 rounded-full text-sm font-medium text-white ${
+                    confirmingSub && confirmingSub.is_active
+                      ? "bg-rose-600 hover:bg-rose-700"
+                      : "bg-emerald-600 hover:bg-emerald-700"
+                  } disabled:opacity-60`}
+                >
+                  {confirmLoading
+                    ? confirmingSub && confirmingSub.is_active
+                      ? "Removing…"
+                      : "Activating…"
+                    : confirmingSub && confirmingSub.is_active
+                    ? "Yes, unsubscribe"
+                    : "Yes, reactivate"}
+                </button>
+              )}
             </div>
           </div>
         </div>
