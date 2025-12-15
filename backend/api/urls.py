@@ -12,6 +12,8 @@ from .views.SubscriptionsView import (
     SubscriptionDetailView,
     SubscriberSubscriptionsView,
     SubscriptionUnsubscribeView,
+    SubscriptionToggleActiveView,
+    SubscriptionDeleteView,
 )
 from .views.OpenAlexKeywordSearchView import OpenAlexKeywordSearchView
 from .views.OpenAlexGeminiKeywordSearchView import OpenAlexGeminiKeywordSearchView
@@ -50,6 +52,16 @@ urlpatterns = [
         "subscriptions/<int:pk>/unsubscribe/",
         SubscriptionUnsubscribeView.as_view(),
         name="subscription-unsubscribe",
+    ),
+    path(
+        "subscriptions/<int:pk>/toggle-active/",
+        SubscriptionToggleActiveView.as_view(),
+        name="subscription-toggle-active",
+    ),
+    path(
+        "subscriptions/<int:pk>/delete/",
+        SubscriptionDeleteView.as_view(),
+        name="subscription-delete",
     ),
 
 ]
