@@ -146,11 +146,9 @@ class SubscriberSubscriptionsView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        subs = (
-            subscriber.subscriptions
-            .filter(is_active=True)
-            .order_by("-created_at")
-        )
+        # Return all subscriptions (both active and inactive) so the
+        # frontend manage page can show and toggle them.
+        subs = subscriber.subscriptions.order_by("-created_at")
 
         ser = SubscriptionListSerializer(subs, many=True)
         return Response(
@@ -199,5 +197,89 @@ class SubscriptionUnsubscribeView(APIView):
         # hard delete yerine soft delete:
         sub.is_active = False
         sub.save(update_fields=["is_active"])
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class SubscriptionToggleActiveView(APIView):
+    """
+    POST /api/subscriptions/<id>/toggle-active/?token=<manage_token>
+
+    Toggles the is_active flag for a subscription belonging to the
+    subscriber identified by manage_token. Returns the updated
+    subscription serialized for immediate UI refresh.
+    """
+
+    authentication_classes = []
+    permission_classes = []
+
+    def post(self, request, pk, *args, **kwargs):
+        token = request.query_params.get("token")
+        if not token:
+            return Response(
+                {"detail": "Missing token parameter."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            subscriber = Subscriber.objects.get(manage_token=token)
+        except Subscriber.DoesNotExist:
+            return Response(
+                {"detail": "Invalid token."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            sub = subscriber.subscriptions.get(pk=pk)
+        except Subscription.DoesNotExist:
+            return Response(
+                {"detail": "Subscription not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        sub.is_active = not sub.is_active
+        sub.save(update_fields=["is_active"])
+
+        ser = SubscriptionListSerializer(sub)
+        return Response(ser.data, status=status.HTTP_200_OK)
+
+
+class SubscriptionDeleteView(APIView):
+    """
+    DELETE /api/subscriptions/<id>/delete/?token=<manage_token>
+
+    Permanently deletes a subscription record belonging to the
+    subscriber identified by manage_token.
+    """
+
+    authentication_classes = []
+    permission_classes = []
+
+    def delete(self, request, pk, *args, **kwargs):
+        token = request.query_params.get("token")
+        if not token:
+            return Response(
+                {"detail": "Missing token parameter."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            subscriber = Subscriber.objects.get(manage_token=token)
+        except Subscriber.DoesNotExist:
+            return Response(
+                {"detail": "Invalid token."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            sub = subscriber.subscriptions.get(pk=pk)
+        except Subscription.DoesNotExist:
+            return Response(
+                {"detail": "Subscription not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Hard delete the subscription row
+        sub.delete()
 
         return Response(status=status.HTTP_204_NO_CONTENT)
