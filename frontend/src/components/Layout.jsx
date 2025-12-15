@@ -11,8 +11,6 @@ export default function Layout() {
           <nav className="nav">
             <a href="#">Database</a>
             <a href="mailto:appproximaa@gmail.com">Contact</a>
-            <a href="#">EN</a>
-            <a href="#">TR</a>
           </nav>
         </div>
       </header>
