@@ -40,11 +40,7 @@ const Header = () => {
                         <nav className="hidden md:flex space-x-8 items-center">
                             <a href="/#statistics" className="text-gray-700 hover:text-purple-600 font-medium transition-colors">Database</a>
                             <a href="/#contact" className="text-gray-700 hover:text-purple-600 font-medium transition-colors">Contact</a>
-                            <div className="flex items-center space-x-2">
-                                <button className="text-gray-700 hover:text-purple-600 font-medium transition-colors">EN</button>
-                                <span className="text-gray-400">|</span>
-                                <button className="text-gray-700 hover:text-purple-600 font-medium transition-colors">TR</button>
-                            </div>
+                            {/* language selector removed (no translations available) */}
                         </nav>
                         <button id="mobileMenuBtn" className="md:hidden text-gray-700 relative z-50" onClick={toggleMenu}>
                             <svg id="hamburgerIcon" className={`w-6 h-6 transition-transform duration-300 ${isMenuOpen ? 'opacity-0' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -63,13 +59,7 @@ const Header = () => {
                     <nav className="space-y-6">
                         <a href="/#statistics" onClick={toggleMenu} className="block text-2xl font-medium text-gray-700 hover:text-purple-600 transition-colors">Database</a>
                         <a href="/#contact" onClick={toggleMenu} className="block text-2xl font-medium text-gray-700 hover:text-purple-600 transition-colors">Contact</a>
-                        <div className="pt-6 border-t border-gray-200">
-                            <div className="flex space-x-4">
-                                <button className="text-xl font-medium text-gray-700 hover:text-purple-600 transition-colors">EN</button>
-                                <span className="text-gray-400">|</span>
-                                <button className="text-xl font-medium text-gray-700 hover:text-purple-600 transition-colors">TR</button>
-                            </div>
-                        </div>
+                        {/* language selector removed from mobile menu */}
                     </nav>
                 </div>
             </div>
