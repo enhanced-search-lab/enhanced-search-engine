@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en" style="margin:0; padding:0;">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="supported-color-schemes" content="light dark" />
+  <title>Proxima — Weekly update</title>
+
+  <style>
+    html, body { margin:0 !important; padding:0 !important; width:100% !important; }
+    table { border-collapse:collapse !important; }
+    a { text-decoration:none; }
+
+    .container{
+      width:100%;
+      background:#f3f6fb;
+      color:#0f172a;
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
+      line-height:1.55;
+    }
+    .wrap{ max-width:760px; margin:0 auto; }
+    .px{ padding-left:28px; padding-right:28px; }
+
+    .card{
+      background:#ffffff;
+      border:1px solid #e6edf5;
+      border-radius:16px;
+      box-shadow:0 10px 26px rgba(16,24,40,0.06);
+      overflow:hidden;
+    }
+
+    .paper-title{
+      font-size:20px;
+      font-weight:900;
+      color:#0b1220;
+      margin:0 0 10px 0;
+      letter-spacing:-.2px;
+    }
+
+    /* Meta as plain text (no pills) */
+    .meta-line{
+      color:#64748b;
+      font-size:13px;
+      font-weight:700;
+      margin:0;
+      padding:0;
+    }
+    .meta-line .sep{ color:#cbd5e1; padding:0 8px; }
+
+    /* Abstract (mail-like) */
+    .paper-abstract{
+      color:#334155;
+      font-size:15px;
+      line-height:1.75;
+
+      text-align: justify;
+      text-justify: inter-word;
+      hyphens: auto;
+
+      white-space: normal;
+      overflow-wrap: break-word;
+      word-break: normal;
+
+      margin:0;
+    }
+
+    .paper-footer{ color:#6b7280; font-size:13px; }
+
+    /* Right panel */
+    .right-col{ width:210px; text-align:right; }
+
+    .sim-label{
+      font-size:12px;
+      font-weight:800;
+      color:#64748b;
+      margin-bottom:6px;
+    }
+    .sim-bar{
+      width:100%;
+      height:8px;
+      border-radius:999px;
+      background:#e5e7eb;
+      overflow:hidden;
+    }
+    .sim-fill{
+      height:8px;
+      border-radius:999px;
+      background:#10b981;
+    }
+    .sim-value{
+      margin-top:6px;
+      font-size:16px;
+      font-weight:900;
+      color:#0f172a;
+    }
+
+    /* Buttons (single-line like previous) */
+    .kpi-row{
+      display:flex;
+      gap:8px;
+      justify-content:flex-end;
+      flex-wrap:wrap;
+      margin-top:12px;
+    }
+    .kpi{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+
+      padding:8px 12px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:900;
+
+      border:1px solid #e5e7eb;
+      background:#f8fafc;
+      color:#0f172a;
+
+      white-space: nowrap;
+      line-height:1.1;
+    }
+    .kpi-oa{
+      background:#fff7ed;
+      border-color:#fed7aa;
+      color:#9a3412;
+    }
+    .kpi-link{
+      background:#eef2ff;
+      border-color:#e0e7ff;
+      color:#3730a3;
+    }
+
+    /* Sections inside card */
+    .card-head{ padding:18px 18px 12px 18px; }
+    .card-abstract{
+      padding:14px 18px 18px 18px;
+      border-top:1px solid #eef2f6;
+      background:#ffffff;
+    }
+
+    @media (prefers-color-scheme: dark){
+      .container{ background:#0b1020 !important; color:#e6eef8 !important; }
+      .card{ background:#0f1724 !important; border-color:#17203a !important; box-shadow:none !important; }
+      .meta-line{ color:#94a3b8 !important; }
+      .paper-abstract{ color:#cbd5e1 !important; }
+      .paper-footer{ color:#94a3b8 !important; }
+      .sim-label{ color:#94a3b8 !important; }
+      .sim-bar{ background:#1f2a44 !important; }
+      .sim-value{ color:#e6eef8 !important; }
+      .kpi{ background:#0b1322 !important; border-color:#1f2a44 !important; color:#e6eef8 !important; }
+      .kpi-oa{ background:#1a1207 !important; border-color:#3a2a10 !important; color:#fbbf24 !important; }
+      .kpi-link{ background:#1f2a44 !important; border-color:#334155 !important; color:#a5b4fc !important; }
+      .card-abstract{ border-top-color:#17203a !important; background:#0f1724 !important; }
+      .meta-line .sep{ color:#334155 !important; }
+    }
+
+    @media screen and (max-width:600px){
+      .px{ padding-left:18px !important; padding-right:18px !important; }
+      .right-col{ width:100% !important; text-align:left !important; padding-top:14px !important; display:block !important; }
+      .kpi-row{ justify-content:flex-start !important; }
+    }
+  </style>
+</head>
+
+<body class="container">
+  <table role="presentation" width="100%">
+    <tr>
+      <td class="px" style="padding:24px 0;">
+        <table role="presentation" class="wrap" width="100%">
+
+          <!-- HEADER -->
+          <tr>
+            <td style="padding:26px; background:#ffffff; border:1px solid #e5e7eb; border-radius:16px; text-align:center;">
+              <h1 style="margin:0; font-size:28px; font-weight:900; color:#4f46e5;">Proxima</h1>
+              <p style="margin:6px 0 0; font-size:14px; color:#6b7280;">Weekly updates for your subscribed search</p>
+            </td>
+          </tr>
+
+          <tr><td style="height:16px;"></td></tr>
+
+          <!-- SEARCH TITLE -->
+          <tr>
+            <td style="background:linear-gradient(135deg,#4f46e5,#7c3aed); border-radius:16px; padding:22px 26px; color:#fff;">
+              <div style="font-size:12px; font-weight:800; opacity:.9;">Subscribed search</div>
+              <div style="font-size:20px; font-weight:900;">{{ search_name }}</div>
+            </td>
+          </tr>
+
+          <tr><td style="height:16px;"></td></tr>
+
+          <!-- INTRO -->
+          <tr>
+            <td style="padding: 0 6px 8px 6px;">
+              <div style="padding: 0 18px;">
+                <h2 style="margin:0 0 10px 0; font-size:20px; color:#4f46e5; font-weight:900;">New this week</h2>
+                <p style="margin:0 0 18px 0; color:#374151; font-size:15px;">
+                  Papers indexed in OpenAlex during the last week that match your subscription.
+                </p>
+              </div>
+            </td>
+          </tr>
+
+          <!-- SUBSCRIPTION PREVIEW: simplified per request - abstracts stacked and keywords below -->
+          <tr>
+            <td style="padding:0 6px 16px 6px;">
+              <table role="presentation" width="100%" style="border-radius:18px; overflow:hidden; background:linear-gradient(135deg,#667eea 0%, #764ba2 100%);">
+                <tr>
+                  <td style="padding:22px; color:#fff;">
+                    <table role="presentation" width="100%">
+                      <tr>
+                        <td>
+                          <h2 style="margin:0 0 12px 0; font-size:20px; font-weight:800;">Abstracts</h2>
+                        </td>
+                      </tr>
+
+                      <tr><td style="height:10px"></td></tr>
+
+                      <!-- Stacked abstracts (up to 3) -->
+                      {% if subscription_abstracts %}
+                        {% for sa in subscription_abstracts|slice:":3" %}
+                          <tr>
+                            <td style="padding:8px 0;">
+                              <div style="background:rgba(255,255,255,0.06); border-radius:10px; padding:12px; height:84px; max-height:84px; overflow:hidden;">
+                                <p style="margin:0; color:#ffffff; font-size:15px; line-height:1.4; display:-webkit-box; -webkit-line-clamp:5; -webkit-box-orient:vertical; overflow:hidden;">{{ sa }}</p>
+                              </div>
+                            </td>
+                          </tr>
+                          <tr><td style="height:8px"></td></tr>
+                        {% endfor %}
+                      {% else %}
+                        <tr>
+                          <td style="padding:8px 0;"><p style="margin:0; color:rgba(255,255,255,0.9);">No sample abstracts available.</p></td>
+                        </tr>
+                      {% endif %}
+
+                      <!-- Keywords under the abstracts -->
+                      <tr><td style="height:8px"></td></tr>
+                      <tr>
+                        <td>
+                          {% if subscription_keywords %}
+                            <div style="display:block; background:rgba(255,255,255,0.04); padding:12px; border-radius:10px;">
+                              <div style="font-size:12px; font-weight:700; opacity:0.9; margin-bottom:8px; color:rgba(255,255,255,0.92);">Keywords</div>
+                              <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                                {% for kw in subscription_keywords %}
+                                  <div style="background:rgba(255,255,255,0.12); color:#fff; padding:6px 10px; border-radius:999px; font-weight:700; font-size:13px;">{{ kw }}</div>
+                                {% endfor %}
+                              </div>
+                            </div>
+                          {% endif %}
+                        </td>
+                      </tr>
+
+                      <tr><td style="height:12px"></td></tr>
+                      <tr>
+                        <td style="color:rgba(255,255,255,0.85); font-size:13px;">Showing {{ new_items|length }} new papers this week</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          {% if new_items %}
+            {% for item in new_items %}
+              <tr>
+                <td class="card">
+
+                  <!-- HEAD -->
+                  <div class="card-head">
+                    <table width="100%" role="presentation">
+                      <tr>
+                        <!-- LEFT -->
+                        <td style="vertical-align:top; padding-right:16px;">
+                          <h3 class="paper-title">
+                            <a href="{{ item.openalex_url }}" style="color:inherit;">{{ item.title }}</a>
+                          </h3>
+
+                          <!-- Plain meta line -->
+                          <p class="meta-line">
+                            {{ item.year }}
+                            <span class="sep">•</span>
+                            {{ item.authors }}
+                            {% if item.venue %}
+                              <span class="sep">•</span>
+                              {{ item.venue }}
+                            {% endif %}
+                          </p>
+                        </td>
+
+                        <!-- RIGHT -->
+                        <td class="right-col" style="vertical-align:top;">
+                          <div class="sim-label">Similarity</div>
+                          <div class="sim-bar">
+                            <div class="sim-fill" style="width: {{ item.score_percent }}%;"></div>
+                          </div>
+                          <div class="sim-value">{{ item.score_percent }}%</div>
+
+                          <div class="kpi-row">
+                            {% if item.is_open_access %}
+                              <a href="{{ item.oa_url|default:item.openalex_url }}" class="kpi kpi-oa">🌐 Open Access</a>
+                            {% endif %}
+                            <a href="{{ item.openalex_url }}" class="kpi kpi-link">↗ OpenAlex</a>
+                          </div>
+                        </td>
+                      </tr>
+                    </table>
+                  </div>
+
+                  <!-- ABSTRACT (full width) -->
+                  <div class="card-abstract">
+                    <div class="paper-abstract" style="margin-bottom:12px;">
+                      {{ item.abstract|linebreaksbr }}
+                    </div>
+
+                    <div class="paper-footer">
+                      🔗 {{ item.cited_by_count|default:0 }} citations ·
+                      📚 {{ item.references_count|default:0 }} references ·
+                      <a href="{{ item.openalex_url }}" style="color:#4f46e5; text-decoration:underline; font-weight:900;">View on OpenAlex</a>
+                    </div>
+                  </div>
+
+                </td>
+              </tr>
+
+              <tr><td style="height:14px;"></td></tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td class="card" style="padding:18px;">
+                <p style="margin:0; color:#6b7280;">No matching papers were found this week.</p>
+              </td>
+            </tr>
+          {% endif %}
+
+          <!-- CTA: Re-added 'View my subscription' button (shown only if manage_url is provided in context) -->
+          <tr>
+            <td style="padding:16px 8px 4px 8px; text-align:center; font-size:12px; color:#6b7280;">
+              {% if manage_url %}
+                <a href="{{ manage_url }}" style="display:inline-block; background:#4f46e5; color:#ffffff; padding:10px 16px; border-radius:8px; text-decoration:none; font-weight:800; font-size:13px;">View my subscription</a>
+              {% endif %}
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:8px 8px 24px 8px; text-align:center; font-size:12px; color:#6b7280; border-top:1px solid #eef2f6;">
+              <div style="margin:8px 0 8px 0;">
+                <a href="#" style="color:#6b7280; margin:0 8px; text-decoration:underline; font-size:12px;">Privacy</a>
+                <span style="color:#cbd5e1;">·</span>
+                <a href="#" style="color:#6b7280; margin:0 8px; text-decoration:underline; font-size:12px;">Terms</a>
+                <span style="color:#cbd5e1;">·</span>
+                <a href="mailto:appproximaa@gmail.com" style="color:#6b7280; margin:0 8px; text-decoration:underline; font-size:12px;">Contact</a>
+              </div>
+              <div style="color:#9ca3af; font-size:12px;">
+                © 2025 Proxima | Powered by OpenAlex
+              </div>
+              <div style="margin-top:6px; color:#9ca3af; font-size:12px;">
+                <a href="mailto:appproximaa@gmail.com" style="color:#9ca3af; text-decoration:underline;">appproximaa@gmail.com</a>
+              </div>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
