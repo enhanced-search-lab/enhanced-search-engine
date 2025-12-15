@@ -159,13 +159,20 @@ Abstract:
 # ====================== OPENALEX FETCH + EMBEDDINGS =================
 
 
-def fetch_openalex_candidates(query: str, per_page: int = 30) -> List[dict]:
+def fetch_openalex_candidates(query: str, per_page: int = 30, from_publication_date: str | None = None, to_publication_date: str | None = None) -> List[dict]:
     """
     Verilen kısa query için OpenAlex'ten sonuç çeker.
     """
+    # Build filter string, optionally including date bounds
+    filters = ["language:en", "has_abstract:true"]
+    if from_publication_date:
+        filters.append(f"from_publication_date:{from_publication_date}")
+    if to_publication_date:
+        filters.append(f"to_publication_date:{to_publication_date}")
+
     params = {
         "search": query,
-        "filter": "language:en,has_abstract:true",
+        "filter": ",".join(filters),
         "per_page": per_page,
         "sort": "relevance_score:desc",
         "mailto": MAILTO,
@@ -219,7 +226,9 @@ def embed_work(work: dict) -> Tuple[str, str, np.ndarray]:
 def fetch_with_progressive_relaxation(
     tokens: List[str],
     per_page: int = 30,
-    min_terms: int = 1
+    min_terms: int = 1,
+    from_publication_date: str | None = None,
+    to_publication_date: str | None = None,
 ) -> Tuple[List[dict], str]:
     """
     Token/phrase listesinden:
@@ -232,8 +241,12 @@ def fetch_with_progressive_relaxation(
     while len(current_tokens) >= min_terms:
         query = " ".join(current_tokens)
         print(f"   Trying query: \"{query}\"")
-
-        works = fetch_openalex_candidates(query, per_page=per_page)
+        works = fetch_openalex_candidates(
+            query,
+            per_page=per_page,
+            from_publication_date=from_publication_date,
+            to_publication_date=to_publication_date,
+        )
         print(f"   -> Fetched {len(works)} works.\n")
 
         if works:
@@ -257,6 +270,8 @@ def rerank_openalex_for_abstracts(
     user_keywords_raw: str = "",
     per_group: int = 30,
     top_k: int = 90,
+    from_publication_date: str | None = None,
+    to_publication_date: str | None = None,
 ) -> List[dict]:
     """
     Çoklu abstract + opsiyonel kullanıcı keyword'leri için:
@@ -336,6 +351,8 @@ def rerank_openalex_for_abstracts(
                     tokens=group_tokens,
                     per_page=per_group,
                     min_terms=1,
+                    from_publication_date=from_publication_date,
+                    to_publication_date=to_publication_date,
                 )
 
                 print(f"Final query used at position {pos+1}: \"{final_query}\"")
@@ -362,6 +379,8 @@ def rerank_openalex_for_abstracts(
                 tokens=kw_tokens,
                 per_page=per_group,
                 min_terms=1,
+                from_publication_date=from_publication_date,
+                to_publication_date=to_publication_date,
             )
 
             print(f"Final keyword query: \"{final_kw_query}\"")
