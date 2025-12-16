@@ -216,3 +216,6 @@ DEFAULT_FROM_EMAIL = os.environ.get(
 
 SUBSCRIPTION_FRONTEND_VERIFY_URL = "http://localhost:5174/subscription/verified"
 
+# Base URL for backend endpoints (used when constructing links that should hit Django)
+SUBSCRIPTION_BACKEND_BASE_URL = os.getenv("SUBSCRIPTION_BACKEND_BASE_URL", "http://localhost:8000")
+

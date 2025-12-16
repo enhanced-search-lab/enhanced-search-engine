@@ -165,6 +165,28 @@ export async function toggleSubscriptionActive(id, token) {
 
   return res.json();
 }
+
+// GoodMatch endpoints (for "marked as good match" items from weekly emails)
+export async function getGoodMatches(token) {
+  const res = await fetch(`${API_BASE}/api/goodmatches/?token=${encodeURIComponent(token)}`);
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`Failed to load good matches (${res.status}): ${text}`);
+  }
+  return res.json(); // { good_matches: [] }
+}
+
+export async function deleteGoodMatch(id, token) {
+  const res = await fetch(
+    `${API_BASE}/api/goodmatches/${id}/delete/?token=${encodeURIComponent(token)}`,
+    { method: "DELETE" }
+  );
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`Failed to delete good match (${res.status}): ${text}`);
+  }
+  return res.json();
+}
 // POST /api/eval-feedback/
 // body: { query: { abstracts, keywords }, choice: "left"|"right"|"both"|"none", comment?: string }
 export async function sendEvalFeedback(payload) {
