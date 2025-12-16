@@ -11,6 +11,8 @@ import re
 from django.conf import settings
 from django.db.models import Q
 from api.models.subscriberModel import Subscriber
+from django.core import signing
+from urllib.parse import urlparse
 
 
 def score_work_against_subscription(work_text, subscription):
@@ -189,6 +191,23 @@ class Command(BaseCommand):
                         pass
 
                 manage_url = f"{settings.SUBSCRIPTION_FRONTEND_MANAGE_URL}?token={subscriber.manage_token}"
+                # Add signed goodmatch links per item (single-click recording)
+                # Use explicit backend base URL (avoid pointing links to frontend dev server)
+                base_site = getattr(settings, 'SUBSCRIPTION_BACKEND_BASE_URL', '') or getattr(settings, 'SITE_URL', '')
+
+                for it in items:
+                    payload = {
+                        'subscriber_token': subscriber.manage_token,
+                        'work_id': it.get('openalex_url', '').rsplit('/', 1)[-1],
+                        'title': it.get('title', ''),
+                        'openalex_url': it.get('openalex_url', ''),
+                        'subscription_id': sub.id,
+                        'score_percent': it.get('score_percent', 0),
+                    }
+                    signed = signing.dumps(payload, salt='goodmatch-v1')
+                    site_root = (base_site or '').rstrip('/')
+                    it['goodmatch_link'] = f"{site_root}/api/goodmatch/record/?gm={signed}"
+
                 context = {
                     'search_name': sub.query_name or 'Your search',
                     'new_items': items,
