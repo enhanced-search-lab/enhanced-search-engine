@@ -54,6 +54,16 @@ export default function SearchPage() {
   });
   const [error, setError] = useState("");
   const [evalSubmitting, setEvalSubmitting] = useState(false);
+  // Sort-only state (client-side, applies only when eval is OFF)
+  const [sortBy, setSortBy] = useState("similarity"); // similarity | year | citations | references
+  const [sortDirDesc, setSortDirDesc] = useState(true);
+  const mapSortLabel = (s) => {
+    if (s === 'similarity') return 'Similarity';
+    if (s === 'year') return 'Year';
+    if (s === 'citations') return 'Citations';
+    if (s === 'references') return 'References';
+    return s;
+  };
 
   const queryFromURL = useMemo(() => {
     const abstracts = params.getAll("abstract");
@@ -155,8 +165,7 @@ export default function SearchPage() {
       if (choice === "left") chosen_setup = layout.left;
       else if (choice === "middle") chosen_setup = layout.middle;
       else if (choice === "right") chosen_setup = layout.right;
-
-      await sendEvalFeedback({
+      const payload = {
         query,
         choice,
         comment,
@@ -165,9 +174,33 @@ export default function SearchPage() {
         // basitçe iki listenin ilk birkaç ID'sini de ekleyelim (opsiyonel, backend için faydalı olabilir)
         left_ids: (data.results || []).slice(0, 50).map((p) => p.id),
         right_ids: (openAlexData.results || []).slice(0, 50).map((p) => p.id),
-      });
+      };
+
+      // Construct the persisted-like object to return to the caller so the UI can
+      // immediately show what was recorded. We include a local timestamp.
+      const persisted = {
+        query: payload.query,
+        choice: payload.choice,
+        comment: payload.comment,
+        layout: payload.layout,
+        chosen_setup: payload.chosen_setup,
+        ts: new Date().toISOString(),
+      };
+
+      await sendEvalFeedback(payload);
+      return persisted;
     } catch (e) {
       console.warn("Eval feedback send failed", e);
+      // Even if sending failed, return a local persisted object so the UI can
+      // show immediate feedback to the user.
+      return {
+        query,
+        choice,
+        comment,
+        layout,
+        chosen_setup: choice === "left" ? layout.left : choice === "middle" ? layout.middle : layout.right,
+        ts: new Date().toISOString(),
+      };
     } finally {
       setEvalSubmitting(false);
     }
@@ -249,6 +282,34 @@ export default function SearchPage() {
 }, [data, request]);
 
 
+  // Apply sort only (used when not in eval mode). Returns a new sorted array.
+  const applySortOnly = (items) => {
+    if (!items || !items.length) return [];
+    const out = items.slice();
+    out.sort((a, b) => {
+      let va = 0;
+      let vb = 0;
+      if (sortBy === "similarity") {
+        const aArr = a.per_abstract_sims || [];
+        const bArr = b.per_abstract_sims || [];
+        va = aArr.length ? (aArr.reduce((x, y) => x + y, 0) / aArr.length) * 100 : 0;
+        vb = bArr.length ? (bArr.reduce((x, y) => x + y, 0) / bArr.length) * 100 : 0;
+      } else if (sortBy === "year") {
+        va = a.year || 0;
+        vb = b.year || 0;
+      } else if (sortBy === "citations") {
+        va = a.cited_by_count || 0;
+        vb = b.cited_by_count || 0;
+      } else if (sortBy === "references") {
+        va = a.references_count || 0;
+        vb = b.references_count || 0;
+      }
+      if (va === vb) return 0;
+      return sortDirDesc ? vb - va : va - vb;
+    });
+    return out;
+  };
+
   return (
     <div style={{display:"grid", gap:24}}>
       <QuerySummary
@@ -259,14 +320,53 @@ export default function SearchPage() {
         onQueryUpdate={handleQueryUpdate}
         onSubscribeClick={() => setSubscribeOpen(true)}
       />
-      {/* Normal modda tek sütun; eval modda aşağıdaki üçlü layout gösterilecek */}
+        {/* Sort controls (client-side). Only show when evaluation mode is OFF. */}
+        {!SHOW_EVAL && (
+          <div className="card sort-bar" style={{display:'flex', gap:12, alignItems:'center', flexWrap:'wrap'}}>
+            {/* Label at the start */}
+            <div className="sort-label">Sort by:</div>
+
+            {/* Field selector: what we sort by */}
+            <select className="sort-select" value={sortBy} onChange={(e) => setSortBy(e.target.value)} aria-label="Choose sort field">
+              <option value="similarity">Similarity</option>
+              <option value="year">Year</option>
+              <option value="citations">Citations</option>
+              <option value="references">References</option>
+            </select>
+
+            {/* Desc/Asc toggle: arrow + short visible label, animated rotation */}
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => setSortDirDesc((v) => !v)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSortDirDesc(v => !v); } }}
+              className={`sort-pill ${sortDirDesc ? 'desc active' : 'asc'}`}
+              aria-pressed={sortDirDesc}
+              title={`${mapSortLabel(sortBy)} — ${sortDirDesc ? 'Descending' : 'Ascending'} `}
+            >
+              <span className="arrow" aria-hidden>
+                <svg className="chev" width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </span>
+              {/* visible short label indicating direction */}
+              <span className="sort-dir-label">{sortDirDesc ? 'Desc' : 'Asc'}</span>
+              {/* screen-reader text for the selected field */}
+              <span className="sr-only">{mapSortLabel(sortBy)}</span>
+            </div>
+          </div>
+        )}
+        {/* Normal modda tek sütun; eval modda aşağıdaki üçlü layout gösterilecek */}
       {!SHOW_EVAL && (
-        <SearchResultsList
-          results={data?.results || []}
-          loading={loading}
-          error={error}
-          hideSimilarity={false}
-        />
+        (() => {
+          const sorted = applySortOnly(data?.results || []);
+          return (
+            <SearchResultsList
+              results={sorted}
+              loading={loading}
+              error={error}
+              hideSimilarity={false}
+            />
+          );
+        })()
       )}
 
 
@@ -290,6 +390,7 @@ export default function SearchPage() {
               loading={false}
               error={error}
               hideSimilarity={SHOW_EVAL}
+              compact={SHOW_EVAL}
             />
           </div>
 
@@ -306,6 +407,7 @@ export default function SearchPage() {
               loading={false}
               error={error}
               hideSimilarity={SHOW_EVAL}
+              compact={SHOW_EVAL}
             />
           </div>
 
@@ -322,6 +424,7 @@ export default function SearchPage() {
               loading={false}
               error={error}
               hideSimilarity={SHOW_EVAL}
+              compact={SHOW_EVAL}
             />
           </div>
         </div>
