@@ -358,9 +358,11 @@ export default function SearchPage() {
       {!SHOW_EVAL && (
         (() => {
           const sorted = applySortOnly(data?.results || []);
+          // Show only top 12 items in non-eval mode for denser display
+          const display = (sorted || []).slice(0, 12);
           return (
             <SearchResultsList
-              results={sorted}
+              results={display}
               loading={loading}
               error={error}
               hideSimilarity={false}
@@ -376,16 +378,16 @@ export default function SearchPage() {
           Loading all result sets…
         </div>
       ) : (
-		<div className="grid gap-y-8 gap-x-4 md:grid-cols-3">
+        <div className="grid gap-y-8 gap-x-4 md:grid-cols-3">
           {/* Left column */}
           <div>
             <SearchResultsList
               results={
                 layout.left === "embedding"
-                  ? data?.results || []
+                  ? (data?.results || []).slice(0, 20)
                   : layout.left === "raw_openalex"
-                  ? openAlexData?.results || []
-                  : openAlexGeminiData?.results || []
+                  ? (openAlexData?.results || []).slice(0, 20)
+                  : (openAlexGeminiData?.results || []).slice(0, 20)
               }
               loading={false}
               error={error}
@@ -399,10 +401,10 @@ export default function SearchPage() {
             <SearchResultsList
               results={
                 layout.middle === "embedding"
-                  ? data?.results || []
+                  ? (data?.results || []).slice(0, 20)
                   : layout.middle === "raw_openalex"
-                  ? openAlexData?.results || []
-                  : openAlexGeminiData?.results || []
+                  ? (openAlexData?.results || []).slice(0, 20)
+                  : (openAlexGeminiData?.results || []).slice(0, 20)
               }
               loading={false}
               error={error}
@@ -416,10 +418,10 @@ export default function SearchPage() {
             <SearchResultsList
               results={
                 layout.right === "embedding"
-                  ? data?.results || []
+                  ? (data?.results || []).slice(0, 20)
                   : layout.right === "raw_openalex"
-                  ? openAlexData?.results || []
-                  : openAlexGeminiData?.results || []
+                  ? (openAlexData?.results || []).slice(0, 20)
+                  : (openAlexGeminiData?.results || []).slice(0, 20)
               }
               loading={false}
               error={error}
@@ -429,9 +431,7 @@ export default function SearchPage() {
           </div>
         </div>
       )
-      ) : (
-        <SearchResultsList results={data?.results || []} loading={loading} error={error} />
-      )}
+      ) : null}
 
       {SHOW_EVAL && data && openAlexData && (
         <EvalFeedback onSubmit={handleEvalSubmit} submitting={evalSubmitting} />
