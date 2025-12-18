@@ -121,9 +121,9 @@ import { useSearchParams, useNavigate } from "react-router-dom";
                         <h2 className="text-sm font-semibold text-slate-900">{sub.query_name}</h2>
                         <p className="mt-1 text-xs text-slate-500">Created: {new Date(sub.created_at).toLocaleString()}</p>
 
-                        {sub.abstracts && sub.abstracts.length > 0 && (
+                            {sub.abstracts && sub.abstracts.length > 0 && (
                           <div className="mt-2">
-                            <div className="text-[11px] uppercase tracking-wide text-slate-500 mb-1">Abstracts</div>
+                            <div className="text-[11px] uppercase tracking-wide text-slate-500 mb-1" title="Saved abstracts for this subscription">Abstracts</div>
                             <ul className="list-disc pl-5 space-y-2 text-sm text-slate-700">
                               {sub.abstracts.map((a, i) => {
                                 const isExpanded = (expandedAbstracts[sub.id] || []).includes(i);
@@ -153,7 +153,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 
                         {sub.keywords && sub.keywords.length > 0 && (
                           <div className="mt-2">
-                            <div className="text-[11px] uppercase tracking-wide text-slate-500 mb-1">Keywords</div>
+                            <div className="text-[11px] uppercase tracking-wide text-slate-500 mb-1" title="Keywords for this subscription">Keywords</div>
                             <div className="flex flex-wrap gap-1">{sub.keywords.map((k, i) => <span key={i} className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-700">{k}</span>)}</div>
                           </div>
                         )}
@@ -166,7 +166,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
                           {sub.is_verified ? "Verified" : "Pending"}
                         </span>
 
-                        <button type="button" onClick={() => { setConfirmMode("toggle"); setConfirmingSub(sub); }} disabled={busyId === sub.id} className="inline-flex items-center rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60">
+                        <button type="button" title={sub.is_active ? "Unsubscribe from weekly emails" : "Reactivate subscription"} onClick={() => { setConfirmMode("toggle"); setConfirmingSub(sub); }} disabled={busyId === sub.id} className="inline-flex items-center rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60">
                           {busyId === sub.id ? sub.is_active ? "Removing…" : "Activating…" : sub.is_active ? "Unsubscribe" : "Reactivate"}
                         </button>
                       </div>
@@ -186,15 +186,15 @@ import { useSearchParams, useNavigate } from "react-router-dom";
                                   <div className="absolute right-3 top-3 inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800">{`Similarity: ${Math.round(gm.score)}%`}</div>
                                 )}
 
-                                <a href={gm.openalex_url || '#'} target="_blank" rel="noreferrer" className="block pr-28">
-                                  <div className="text-sm text-slate-900 leading-snug">{gm.title}</div>
+                                <div className="block pr-28">
+                                  <a href={gm.openalex_url || '#'} target="_blank" rel="noreferrer" className="text-sm text-slate-900 leading-snug hover:underline">{gm.title}</a>
                                   {/* larger spacer line under the title */}
                                   <div className="h-4" aria-hidden="true" />
                                   <div className="text-xs text-slate-500 mt-2">{gm.last_clicked_at ? new Date(gm.last_clicked_at).toLocaleString() : 'Saved'}</div>
-                                </a>
+                                </div>
 
                                 <div className="absolute right-4 bottom-4">
-                                  <button onClick={async () => {
+                                  <button title="Remove this saved match" onClick={async () => {
                                     if (!token) return;
                                     try {
                                       setGmBusyId(gm.id);

@@ -88,7 +88,7 @@ const PaperModal = ({ paper, onClose }) => {
                     {/* Keywords Section - MOVED UP */}
                     {paper.keywords && paper.keywords.length > 0 && (
                         <div className="pt-6 mt-6 border-t border-gray-200">
-                            <h4 className="text-xl font-semibold text-gray-800 mb-4">Keywords</h4>
+                            <h4 className="text-xl font-semibold text-gray-800 mb-4" title="Keywords — terms associated with the paper">Keywords</h4>
                             <div className="flex flex-wrap gap-3">
                                 {paper.keywords.map((keyword, index) => (
                                     <span key={index} className="bg-gray-100 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg hover:bg-purple-100 hover:text-purple-700 transition-colors cursor-default">
@@ -101,7 +101,7 @@ const PaperModal = ({ paper, onClose }) => {
 
                     {/* Abstract Section - MOVED DOWN */}
                     <div className="pt-6 mt-6 border-t border-gray-200">
-                        <h4 className="text-xl font-semibold text-gray-800 mb-4">Abstract</h4>
+                        <h4 className="text-xl font-semibold text-gray-800 mb-4" title="Paper abstract">Abstract</h4>
                         <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{paper.abstract || 'No abstract available.'}</p>
                     </div>
 

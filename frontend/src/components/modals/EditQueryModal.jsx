@@ -95,8 +95,8 @@ const EditQueryModal = ({ isOpen, onClose, currentQuery, onApply }) => {
                     <div className="space-y-5 overflow-y-auto flex-1 pr-1" style={{ minHeight: '200px' }}>
                         <div>
                             <div className="flex items-center justify-between mb-2">
-                                <label className="text-sm font-medium text-gray-700">Abstracts</label>
-                                <button onClick={handleAddAbstract} className="text-sm px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg">+ Add abstract</button>
+                                <label className="text-sm font-medium text-gray-700" title="Paste one or more abstracts to search">Abstracts</label>
+                                <button onClick={handleAddAbstract} title="Add another abstract" className="text-sm px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg">+ Add abstract</button>
                             </div>
                             <div className="space-y-3">
                                 {abstracts.map((abs, i) => (
@@ -120,7 +120,7 @@ const EditQueryModal = ({ isOpen, onClose, currentQuery, onApply }) => {
                         </div>
 
                         <div>
-                            <label className="text-sm font-medium text-gray-700 mb-1 block">Keywords</label>
+                            <label className="text-sm font-medium text-gray-700 mb-1 block" title="Keywords — separate multiple with commas">Keywords</label>
                             <div className="flex flex-wrap items-center gap-2 p-2 border border-gray-300 rounded-lg">
                                 {keywords.map((kw, i) => <KeywordChip key={`${kw}-${i}`} keyword={kw} onRemove={() => removeKeyword(kw)} />)}
                                 <input
@@ -135,7 +135,7 @@ const EditQueryModal = ({ isOpen, onClose, currentQuery, onApply }) => {
                         </div>
 
                         <div>
-                            <label className="text-sm font-medium text-gray-700 mb-1 block">Year filter</label>
+                            <label className="text-sm font-medium text-gray-700 mb-1 block" title="Publication year — single year or range. Leave empty to disable">Year filter</label>
                             <div className="flex items-center gap-2">
                                 <input
                                     type="number"
@@ -152,7 +152,7 @@ const EditQueryModal = ({ isOpen, onClose, currentQuery, onApply }) => {
                                     value={yearMax}
                                     onChange={e => setYearMax(e.target.value)}
                                 />
-                                <button type="button" className="link-sm ml-2" onClick={() => { setYearMin(''); setYearMax(''); setYearError(''); setIsYearValid(true); }}>
+                                <button type="button" title="Clear year inputs" className="link-sm ml-2" onClick={() => { setYearMin(''); setYearMax(''); setYearError(''); setIsYearValid(true); }}>
                                     Clear
                                 </button>
                                 <div style={{ fontSize: 12, color: '#6b7280' }} className="ml-3">Leave empty to disable</div>

@@ -104,7 +104,7 @@ export default function Home() {
 
       <section style={{marginTop:-24}}>
         <form onSubmit={onSearch} className="card">
-          <div className="field-label">Keywords</div>
+          <div className="field-label" title="Keywords — separate multiple with commas">Keywords</div>
           <div className="chips">
             {keywords.map(k => (
               <span className="chip" key={k}>
@@ -124,7 +124,7 @@ export default function Home() {
 
           
 
-          <div className="field-label">Abstracts</div>
+          <div className="field-label" title="Paste one or more abstracts to search">Abstracts</div>
           {abstracts.map((val,i)=>(
             <textarea
               key={i}
@@ -138,6 +138,7 @@ export default function Home() {
           <div style={{ marginTop: 8, display: "flex", justifyContent: "flex-end" }}>
             <button
               type="button"
+              title="Add another abstract"
               onClick={addAbstract}
               className="link-sm"
               style={{
@@ -174,7 +175,7 @@ export default function Home() {
           </div>
 
           <div style={{ marginTop: 12 }}>
-            <div className="field-label">Year filter</div>
+            <div className="field-label" title="Publication year — single year or range. Leave empty to disable">Year filter</div>
             <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <input
               type="number"
@@ -197,12 +198,12 @@ export default function Home() {
               value={yearMax}
               onChange={(e) => setYearMax(e.target.value)}
             />
-            <button type="button" className="link-sm" onClick={() => { setYearMin(''); setYearMax(''); }} style={{ marginLeft: 8 }}>Clear</button>
+            <button type="button" title="Clear year inputs" className="link-sm" onClick={() => { setYearMin(''); setYearMax(''); }} style={{ marginLeft: 8 }}>Clear</button>
           </div>
           </div>
           {yearError && <div style={{ color: '#b91c1c', marginTop: 8, fontSize: 13 }}>{yearError}</div>}
           <div style={{marginTop:64}}>
-            <button type="submit" className="btn-primary" disabled={loading || !isYearValid}>
+            <button type="submit" className="btn-primary" disabled={loading || !isYearValid} title="Search — find matching papers based on your inputs">
               🔎 {loading ? "Searching…" : "Search Research Papers"}
             </button>
           </div>

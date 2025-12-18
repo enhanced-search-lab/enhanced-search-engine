@@ -79,8 +79,8 @@ const SearchForm = () => {
                 <div className="max-w-4xl mx-auto mb-8">
                     <div className="glass-effect rounded-3xl p-8 shadow-2xl border border-white/20">
                         
-                        <div>
-                            <h4 className="text-xl font-semibold text-gray-800 mb-4 text-left">Keywords</h4>
+                <div>
+                    <h4 className="text-xl font-semibold text-gray-800 mb-4 text-left" title="Keywords — separate multiple with commas">Keywords</h4>
                             <div className="min-h-[80px] w-full p-3 bg-white rounded-xl border-4 border-purple-300 focus-within:border-purple-500 flex flex-wrap gap-2 items-start">
                                 {keywords.map(kw => <KeywordChip key={kw} keyword={kw} onRemove={removeKeyword} />)}
                                 <input 
@@ -95,7 +95,7 @@ const SearchForm = () => {
                         </div>
 
                         <div className="mt-8">
-                            <h4 className="text-xl font-semibold text-gray-800 mb-4 text-left">Abstracts</h4>
+                            <h4 className="text-xl font-semibold text-gray-800 mb-4 text-left" title="Paste one or more abstracts to search">Abstracts</h4>
                             <div className="space-y-4">
                                 {abstracts.map((abstract, index) => (
                                     <div key={index} className="relative">
@@ -115,6 +115,7 @@ const SearchForm = () => {
                             </div>
                             <div className="mt-3 flex justify-end">
                                 <button
+                                    title="Add another abstract"
                                     onClick={handleAddAbstract}
                                     className="inline-flex items-center gap-2 px-4 py-2 bg-white text-purple-700 font-semibold rounded-full border border-purple-200 shadow-sm hover:bg-purple-50 hover:border-purple-400 hover:shadow-md transition-all text-sm"
                                 >
@@ -125,7 +126,7 @@ const SearchForm = () => {
                         </div>
 
                         <div className="mt-8 text-center">
-                            <button onClick={handleSearch} className="search-button px-12 py-4 text-white font-semibold rounded-xl text-xl">
+                            <button title="Search — find matching papers based on your inputs" onClick={handleSearch} className="search-button px-12 py-4 text-white font-semibold rounded-xl text-xl">
                                 🔎 Search Research Papers
                             </button>
                         </div>

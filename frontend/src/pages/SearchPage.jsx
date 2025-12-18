@@ -424,7 +424,9 @@ export default function SearchPage() {
         query={query}
         // Eval modu açıkken global sonuç sayısını gizle, ama similarity metnini göstermeye devam et
         resultCount={SHOW_EVAL ? 0 : (data?.count ?? 0)}
-        summary={data?.query_summary}
+        // When not in eval mode, render the summary as if per_page is 12 so the
+        // "Showing 1-12 of N" text matches the number of items we display below.
+        summary={SHOW_EVAL ? data?.query_summary : { ...(data?.query_summary || {}), per_page: 12 }}
         onQueryUpdate={handleQueryUpdate}
         onSubscribeClick={() => setSubscribeOpen(true)}
       />
@@ -432,10 +434,10 @@ export default function SearchPage() {
         {!SHOW_EVAL && (
           <div className="card sort-bar" style={{display:'flex', gap:12, alignItems:'center', flexWrap:'wrap'}}>
             {/* Label at the start */}
-            <div className="sort-label">Sort by:</div>
+            <div className="sort-label" title="Choose how results are ordered">Sort by:</div>
 
             {/* Field selector: what we sort by */}
-            <select className="sort-select" value={sortBy} onChange={(e) => setSortBy(e.target.value)} aria-label="Choose sort field">
+            <select className="sort-select" value={sortBy} onChange={(e) => setSortBy(e.target.value)} aria-label="Choose sort field" title="Choose sort field">
               <option value="similarity">Similarity</option>
               <option value="year">Year</option>
               <option value="citations">Citations</option>
@@ -467,7 +469,7 @@ export default function SearchPage() {
       {!SHOW_EVAL && (
         (() => {
           const sorted = applySortOnly(data?.results || []);
-          // Show only top 12 items in non-eval mode for denser display
+          // Show 12 items in compact/non-eval mode to match user's preference.
           const display = (sorted || []).slice(0, 12);
           return (
             <SearchResultsList
@@ -549,12 +551,12 @@ export default function SearchPage() {
       {data && (
         <div style={{marginTop:8, display:"flex", gap:12}}>
           {data.previous && (
-            <button className="btn-ghost" onClick={() => gotoPage(page - 1)}>
+            <button className="btn-ghost" title="Go to previous page of results" onClick={() => gotoPage(page - 1)}>
               Previous
             </button>
           )}
           {data.next && (
-            <button className="btn-ghost" onClick={() => gotoPage(page + 1)}>
+            <button className="btn-ghost" title="Go to next page of results" onClick={() => gotoPage(page + 1)}>
               Next
             </button>
           )}

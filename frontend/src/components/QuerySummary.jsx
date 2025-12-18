@@ -26,18 +26,18 @@ export default function QuerySummary({ query, resultCount, summary, onQueryUpdat
     <>
       <section className="results-head">
         <div className="head-actions">
-          <button className="btn-ghost" onClick={() => setEditModalOpen(true)}>Edit query</button>
-          <button className="btn-ghost" onClick={() => setSubscribeModalOpen(true)}>Subscribe to this query</button>
+          <button className="btn-ghost" title="Edit abstracts & keywords" onClick={() => setEditModalOpen(true)}>Edit query</button>
+          <button className="btn-ghost" title="Subscribe to receive weekly updates" onClick={() => setSubscribeModalOpen(true)}>Subscribe to this query</button>
         </div>
 
         <div>
           {!!abstracts.length && (
             <>
-              <div style={{ fontWeight: 700, opacity: .95, marginBottom: 8 }}>Abstracts</div>
+              <div style={{ fontWeight: 700, opacity: .95, marginBottom: 8 }} title="Paste one or more abstracts to search">Abstracts</div>
               <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))" }}>
                 {abstracts.map((abs, i) => (
                   <div key={i} style={{ background: "#ffffff22", padding: 14, borderRadius: 12, backdropFilter: "blur(2px)" }}>
-                    <div style={{ fontSize: 12, opacity: .9, marginBottom: 4 }}>Abstract #{i + 1}</div>
+                    <div style={{ fontSize: 12, opacity: .9, marginBottom: 4 }} title={`Abstract ${i + 1}`}>Abstract #{i + 1}</div>
                     <div
                       style={{
                         whiteSpace: expandedAbstracts.includes(i) ? "normal" : "nowrap",
@@ -82,7 +82,7 @@ export default function QuerySummary({ query, resultCount, summary, onQueryUpdat
           <div style={{ marginTop: 12, display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-start' }}>
             {!!keywords.length && (
               <div style={{ display: 'flex', flexDirection: 'column', background: '#ffffff22', padding: 12, borderRadius: 12, minWidth: 160, maxWidth: 720 }}>
-                <div style={{ fontSize: 12, opacity: .9, marginBottom: 4 }}>Keywords</div>
+                <div style={{ fontSize: 12, opacity: .9, marginBottom: 4 }} title="Keywords — separate multiple with commas">Keywords</div>
                 <div
                   style={{
                     whiteSpace: keywordsExpanded ? 'normal' : 'nowrap',
@@ -117,7 +117,7 @@ export default function QuerySummary({ query, resultCount, summary, onQueryUpdat
 
             {(query?.year_min || query?.year_max) && (
               <div style={{ display: 'flex', flexDirection: 'column', background: '#ffffff22', padding: 10, borderRadius: 12, minWidth: 120 }}>
-                <div style={{ fontSize: 12, opacity: .9, marginBottom: 4 }}>Year filter</div>
+                <div style={{ fontSize: 12, opacity: .9, marginBottom: 4 }} title="Publication year — single year or range">Year filter</div>
                 <div style={{ fontWeight: 600 }} aria-live="polite">
                   {query?.year_min && query?.year_max ? (
                     query.year_min === query.year_max ? (

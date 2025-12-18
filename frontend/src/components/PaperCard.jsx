@@ -49,6 +49,7 @@ export default function PaperCard({ paper, hideSimilarity = false, compact = fal
               target="_blank"
               rel="noreferrer"
               className="badge badge-amber"
+              title="Open access link"
               style={{
                 padding: "6px 12px",
                 borderRadius: "15px",
@@ -82,7 +83,7 @@ export default function PaperCard({ paper, hideSimilarity = false, compact = fal
           {shown}
           {needsToggle && !expanded && "… "}
           {needsToggle && (
-            <button onClick={() => setExpanded((v) => !v)}>
+            <button title={expanded ? "Collapse abstract" : "Expand abstract"} onClick={() => setExpanded((v) => !v)}>
               {expanded ? "Show less" : "Show more"}
             </button>
           )}
