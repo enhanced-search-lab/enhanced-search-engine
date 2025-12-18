@@ -135,7 +135,7 @@ const EditQueryModal = ({ isOpen, onClose, currentQuery, onApply }) => {
                         </div>
 
                         <div>
-                            <label className="text-sm font-medium text-gray-700 mb-1 block">Year filter (optional)</label>
+                            <label className="text-sm font-medium text-gray-700 mb-1 block">Year filter</label>
                             <div className="flex items-center gap-2">
                                 <input
                                     type="number"

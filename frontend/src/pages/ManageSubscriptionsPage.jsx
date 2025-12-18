@@ -104,21 +104,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 
             {loading && <p className="text-slate-600">Loading your subscriptions…</p>}
 
-            {/* Good matches loading / error */}
-            {!loading && (
-              <div className="mb-6">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-semibold text-slate-900">Good matches</h3>
-                  {gmLoading && <span className="text-xs text-slate-500">Loading…</span>}
-                </div>
 
-                {gmError && !gmLoading && <p className="text-sm text-slate-500 mb-2">{gmError}</p>}
-
-                {!gmLoading && goodMatches && goodMatches.length === 0 && (
-                  <p className="text-sm text-slate-500">No saved matches yet.</p>
-                )}
-              </div>
-            )}
 
             {error && !loading && <p className="text-red-500 text-sm mb-4">{error}</p>}
 

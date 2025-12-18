@@ -118,9 +118,14 @@ export default function QuerySummary({ query, resultCount, summary, onQueryUpdat
             {(query?.year_min || query?.year_max) && (
               <div style={{ display: 'flex', flexDirection: 'column', background: '#ffffff22', padding: 10, borderRadius: 12, minWidth: 120 }}>
                 <div style={{ fontSize: 12, opacity: .9, marginBottom: 4 }}>Year filter</div>
-                <div style={{ fontWeight: 600 }}>
+                <div style={{ fontWeight: 600 }} aria-live="polite">
                   {query?.year_min && query?.year_max ? (
-                    <>{query.year_min} — {query.year_max}</>
+                    query.year_min === query.year_max ? (
+                      // same min and max -> show single year
+                      <span aria-label={`Year ${query.year_min}`}>{query.year_min}</span>
+                    ) : (
+                      <>{query.year_min} — {query.year_max}</>
+                    )
                   ) : query?.year_min ? (
                     <>&ge; {query.year_min}</>
                   ) : query?.year_max ? (

@@ -173,8 +173,9 @@ export default function Home() {
             </button>
           </div>
 
-          <div style={{ marginTop: 12, display: 'flex', justifyContent: 'flex-start', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <div style={{ fontSize: 12, color: '#6b7280', marginRight: 4 }}>Year</div>
+          <div style={{ marginTop: 12 }}>
+            <div className="field-label">Year filter</div>
+            <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <input
               type="number"
               min="1900"
@@ -197,6 +198,7 @@ export default function Home() {
               onChange={(e) => setYearMax(e.target.value)}
             />
             <button type="button" className="link-sm" onClick={() => { setYearMin(''); setYearMax(''); }} style={{ marginLeft: 8 }}>Clear</button>
+          </div>
           </div>
           {yearError && <div style={{ color: '#b91c1c', marginTop: 8, fontSize: 13 }}>{yearError}</div>}
           <div style={{marginTop:64}}>
