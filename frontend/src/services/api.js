@@ -43,8 +43,12 @@ export async function searchPapersPOST({
 export async function searchOpenAlexKeywordPOST({
   keywords = [],
   per_page = 30,
+  year_min,
+  year_max,
 } = {}) {
   const body = { keywords, per_page };
+  if (typeof year_min === 'number') body.year_min = year_min;
+  if (typeof year_max === 'number') body.year_max = year_max;
 
   const res = await fetch(`${API}/openalex-keyword-search/`, {
     method: "POST",
@@ -68,8 +72,12 @@ export async function searchOpenAlexGeminiPOST({
   abstracts = [],
   keywords = [],
   per_page = 30,
+  year_min,
+  year_max,
 } = {}) {
   const body = { abstracts, keywords, per_page };
+  if (typeof year_min === 'number') body.year_min = year_min;
+  if (typeof year_max === 'number') body.year_max = year_max;
 
   const res = await fetch(`${API}/openalex-gemini-keyword-search/`, {
     method: "POST",
@@ -102,9 +110,32 @@ export async function subscribeToSearch(payload) {
   }
 
   if (!res.ok) {
-    const msg =
-      (data && (data.detail || data.error || data.message)) ||
-      `Server error (${res.status})`;
+    const extractMessage = (d) => {
+      if (!d) return `Server error (${res.status})`;
+      if (typeof d === "string") return d;
+      if (d.detail) return d.detail;
+      if (d.error) return d.error;
+      if (d.message) return d.message;
+      // DRF serializer errors often come as { "non_field_errors": ["..."] } or { "field": ["..."] }
+      if (d.non_field_errors) {
+        return Array.isArray(d.non_field_errors)
+          ? d.non_field_errors.join("; ")
+          : String(d.non_field_errors);
+      }
+      // If it's a dict of field errors, join first messages
+      if (typeof d === "object") {
+        const parts = [];
+        for (const k of Object.keys(d)) {
+          const v = d[k];
+          if (Array.isArray(v)) parts.push(`${k}: ${v.join("; ")}`);
+          else parts.push(`${k}: ${String(v)}`);
+        }
+        if (parts.length) return parts.join(" | ");
+      }
+      return `Server error (${res.status})`;
+    };
+
+    const msg = extractMessage(data);
     throw new Error(msg);
   }
 
