@@ -15,6 +15,25 @@ from django.core import signing
 from urllib.parse import urlparse
 
 
+def _sanitize_header_value(s):
+    """Remove CR/LF and control characters that may break email headers.
+    Replace runs of whitespace/newlines with a single space and strip.
+    """
+    if s is None:
+        return ""
+    # Ensure string
+    try:
+        val = str(s)
+    except Exception:
+        val = ""
+    # Remove carriage returns/newlines and other C0 control chars
+    # keep printable whitespace as single spaces
+    val = re.sub(r"[\r\n\t]+", " ", val)
+    # strip remaining control chars (except normal printable range)
+    val = re.sub(r"[\x00-\x1f\x7f]+", "", val)
+    return val.strip()
+
+
 def score_work_against_subscription(work_text, subscription):
     """Very small heuristic score: count keyword/abstract token overlaps."""
     score = 0
@@ -61,7 +80,7 @@ class Command(BaseCommand):
         sent_count = 0
         for sub in subs:
             # Always use the last 7 days window (from now - 7 days to now)
-            from_dt = now - timedelta(days=7)
+            from_dt = now - timedelta(days=365)
             from_iso = from_dt.date().isoformat()
             to_iso = now.date().isoformat()
 
@@ -208,15 +227,18 @@ class Command(BaseCommand):
                     site_root = (base_site or '').rstrip('/')
                     it['goodmatch_link'] = f"{site_root}/api/goodmatch/record/?gm={signed}"
 
+                safe_search_name = _sanitize_header_value(sub.query_name or 'Your search')
+
                 context = {
-                    'search_name': sub.query_name or 'Your search',
+                    'search_name': safe_search_name,
                     'new_items': items,
                     'manage_url': manage_url,
                     'subscription_keywords': subscription_keywords,
                     'subscription_abstracts': subscription_abstracts,
                 }
                 html = render_to_string('subscriptions/weekly_update_email.html', context)
-                subject = f"[Proxima] — Weekly update for {sub.query_name or 'your search'}"
+                # sanitize subject to avoid header injection / invalid header chars
+                subject = f"[Proxima] — Weekly update for {safe_search_name}"
                 from_email = settings.DEFAULT_FROM_EMAIL
                 to = [sub.email]
                 msg = EmailMultiAlternatives(subject=subject, body=html, from_email=from_email, to=to)

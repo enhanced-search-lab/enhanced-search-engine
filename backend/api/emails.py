@@ -19,14 +19,27 @@ def send_verification_email(request, subscription):
     )
     manage_url = f"{manage_base}?token={subscription.subscriber.manage_token}"
 
+    # Sanitize subscription.query_name for inclusion in plain text/html
+    def _sanitize_header_value(s):
+        if s is None:
+            return ""
+        try:
+            val = str(s)
+        except Exception:
+            val = ""
+        val = val.replace("\r", " ").replace("\n", " ").strip()
+        return val
+
     subject = "[Proxima] Confirm your subscription"
 
     # --- Plain text fallback (eski tip mail client'lar için) ---
+    safe_name = _sanitize_header_value(subscription.query_name)
+
     text_message = f"""Hi,
 
-You requested to subscribe to the search:
+    You requested to subscribe to the search:
 
-    {subscription.query_name}
+    {safe_name}
 
 To start receiving suggestions, please confirm your email address:
 {verify_url}
@@ -41,7 +54,7 @@ If you didn't request this, you can safely ignore this email.
     html_message = render_to_string(
         "subscriptions/confirm_subscription_email.html",
         {
-            "search_name": subscription.query_name,
+            "search_name": safe_name,
             "verify_url": verify_url,
             "manage_url": manage_url,
         },
