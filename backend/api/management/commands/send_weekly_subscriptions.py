@@ -80,7 +80,7 @@ class Command(BaseCommand):
         sent_count = 0
         for sub in subs:
             # Always use the last 7 days window (from now - 7 days to now)
-            from_dt = now - timedelta(days=365)
+            from_dt = now - timedelta(days=7)
             from_iso = from_dt.date().isoformat()
             to_iso = now.date().isoformat()
 
@@ -147,11 +147,28 @@ class Command(BaseCommand):
                 self.stderr.write(f"Error running rerank pipeline for sub {sub.id}: {e}")
                 scored = []
 
-            # take top positives
-            chosen = [e for e in scored if e.get('total_score', 0) > 0][:5]
+            # apply a similarity threshold before selecting items to include in the email
+            threshold = float(getattr(settings, 'WEEKLY_MIN_SIMILARITY_PERCENT', 65))
+            # compute score_percent for each candidate and keep only those >= threshold
+            scored_with_pct = []
+            for entry in scored:
+                sims = entry.get('per_abstract_sims') or []
+                if sims:
+                    avg_sim = sum(sims) / len(sims)
+                    score_percent = round(avg_sim * 100, 2)
+                else:
+                    score_percent = 0.0
+                scored_with_pct.append((entry, score_percent))
+
+            # filter by threshold and sort by descending score_percent
+            filtered = [t for t in scored_with_pct if (t[1] or 0) >= threshold]
+            filtered.sort(key=lambda x: x[1], reverse=True)
+
+            # take up to 5 best items
+            chosen = [t[0] for t in filtered[:5]]
 
             items = []
-            max_score = chosen[0]['total_score'] if chosen else 1.0
+            max_score = filtered[0][1] if filtered else 1.0
             for entry in chosen:
                 w = entry['work']
                 wid, title, abstract_text, topics_text, concepts_text = work_to_text_fields(w)
