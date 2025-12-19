@@ -18,6 +18,7 @@ export default function QuerySummary({ query, resultCount, summary, onQueryUpdat
   const end = Math.min(safeCount, page * per);
 
   const handleQueryUpdate = (newQuery) => {
+    console.log("QuerySummary.handleQueryUpdate ->", newQuery);
     onQueryUpdate(newQuery);
     setEditModalOpen(false);
   };

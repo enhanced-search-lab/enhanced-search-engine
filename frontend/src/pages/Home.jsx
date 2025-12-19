@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { searchPapersPOST, searchOpenAlexKeywordPOST } from "../services/api";
 import Statistics from '../components/Statistics';
 import ResearchDiscovery from '../components/ResearchDiscovery';
+import GameModal from '../components/GameModal';
+import { useRef } from 'react';
 
 export default function Home() {
   const navigate = useNavigate();
@@ -11,6 +13,8 @@ export default function Home() {
   const [kwInput, setKwInput] = useState("");
   const [abstracts, setAbstracts] = useState([""]);
   const [loading, setLoading] = useState(false);
+  const [gameDismissed, setGameDismissed] = useState(false);
+  const prevLoadingRef = useRef(false);
   const [yearMin, setYearMin] = useState("");
   const [yearMax, setYearMax] = useState("");
   const [yearError, setYearError] = useState("");
@@ -93,8 +97,17 @@ export default function Home() {
     }
   }, [yearMin, yearMax]);
 
+  // reset gameDismissed when a new search starts
+  useEffect(() => {
+    if (loading && !prevLoadingRef.current) {
+      setGameDismissed(false);
+    }
+    prevLoadingRef.current = loading;
+  }, [loading]);
+
   return (
     <>
+      <GameModal open={loading && !gameDismissed} onClose={() => setGameDismissed(true)} loading={loading} />
       <section className="hero bg-dots">
         <div className="container">
           <h1>Discover the Most Relevant <span className="accent">Research Articles</span> Instantly</h1>

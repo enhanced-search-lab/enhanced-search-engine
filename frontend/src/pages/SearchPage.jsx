@@ -1,9 +1,10 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import QuerySummary from "../components/QuerySummary";
 import SearchResultsList from "../components/SearchResultsList";
 import SubscribeModal from "../components/modals/SubscribeModal";
 import EvalFeedback from "../components/EvalFeedback";
+import GameModal from "../components/GameModal";
 import {
   searchPapersPOST,
   searchOpenAlexKeywordPOST,
@@ -99,7 +100,7 @@ export default function SearchPage() {
 
   useEffect(() => {
     const { abstracts, keywords } = queryFromURL;
-    if (!abstracts.length && !keywords.length) return;
+  if (!abstracts.length && !keywords.length) return;
     // 1) Main embedding-based search
     // Embedding endpoint'ini sadece request/data henüz yoksa çağır.
     if (!request || !data) {
@@ -114,23 +115,32 @@ export default function SearchPage() {
       if (queryFromURL.year_min) yearPayload.year_min = queryFromURL.year_min;
       if (queryFromURL.year_max) yearPayload.year_max = queryFromURL.year_max;
 
+      console.log("SearchPage: starting embedding search", { queryFromURL, page });
       searchPapersPOST({ ...queryFromURL, ...yearPayload, page, per_page: 30 }) // Default increased to 30
         .then((res) => {
+          console.log("SearchPage: embedding response received", res?.results?.length, res);
           setRequest(queryFromURL);
           // Hold embedding response until OpenAlex sets arrive when eval is on
           setPendingData(res);
           setQuery(queryFromURL);
           sessionStorage.setItem("lastSearch", JSON.stringify({ request: queryFromURL, data: res }));
         })
-        .catch((e) => setError(e.message || "Search failed"))
+        .catch((e) => {
+          console.warn("SearchPage: embedding search failed", e);
+          setError(e.message || "Search failed");
+        })
         .finally(() => setLoading(false));
     }
 
     // 2) Raw keyword-only OpenAlex search (only if evaluation flag is on and there are keywords)
     if (SHOW_EVAL && keywords && keywords.length) {
       setLoadingOpenAlex(true);
+      console.log("SearchPage: starting OpenAlex keyword search", keywords);
       searchOpenAlexKeywordPOST({ keywords, per_page: 30, year_min: queryFromURL.year_min, year_max: queryFromURL.year_max })
-        .then((raw) => setOpenAlexData(raw))
+        .then((raw) => {
+          console.log("SearchPage: OpenAlex keyword response", raw?.results?.length, raw);
+          setOpenAlexData(raw);
+        })
         .catch((e) => {
           console.warn("OpenAlex keyword search failed:", e);
           setOpenAlexData(null);
@@ -144,6 +154,7 @@ export default function SearchPage() {
     // 3) Gemini+user keywords OpenAlex search (3rd column in eval mode)
     if (SHOW_EVAL && abstracts && abstracts.length && keywords && keywords.length) {
       setLoadingGemini(true);
+      console.log("SearchPage: starting OpenAlex Gemini search");
       searchOpenAlexGeminiPOST({
         abstracts,
         keywords,
@@ -151,7 +162,10 @@ export default function SearchPage() {
         year_min: queryFromURL.year_min,
         year_max: queryFromURL.year_max,
       })
-        .then((raw) => setOpenAlexGeminiData(raw))
+        .then((raw) => {
+          console.log("SearchPage: OpenAlex Gemini response", raw?.results?.length, raw);
+          setOpenAlexGeminiData(raw);
+        })
         .catch((e) => {
           console.warn("OpenAlex Gemini keyword search failed:", e);
           setOpenAlexGeminiData(null);
@@ -261,6 +275,7 @@ export default function SearchPage() {
   };
 
   const handleQueryUpdate = (newQuery) => {
+    console.log("SearchPage.handleQueryUpdate called with:", newQuery);
     const safeAbstracts = (newQuery && newQuery.abstracts) || [];
     const safeKeywords = (newQuery && newQuery.keywords) || [];
 
@@ -418,8 +433,22 @@ export default function SearchPage() {
     return out;
   };
 
+  // Any in-progress request across embedding/OpenAlex/Gemini
+  const anyLoading = loading || loadingOpenAlex || loadingGemini;
+  const [gameDismissed, setGameDismissed] = useState(false);
+  const prevAnyLoadingRef = useRef(false);
+
+  // When loading begins (transition false -> true), reset dismissed state so modal can show
+  useEffect(() => {
+    if (anyLoading && !prevAnyLoadingRef.current) {
+      setGameDismissed(false);
+    }
+    prevAnyLoadingRef.current = anyLoading;
+  }, [anyLoading]);
+
   return (
     <div style={{display:"grid", gap:24}}>
+      <GameModal open={anyLoading && !allReady && !gameDismissed} onClose={() => setGameDismissed(true)} loading={anyLoading && !allReady} />
       <QuerySummary
         query={query}
         // Eval modu açıkken global sonuç sayısını gizle, ama similarity metnini göstermeye devam et
