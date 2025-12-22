@@ -19,6 +19,7 @@ export default function Home() {
   const [yearMax, setYearMax] = useState("");
   const [yearError, setYearError] = useState("");
   const [isYearValid, setIsYearValid] = useState(true);
+  const [hoveredAbstractIdx, setHoveredAbstractIdx] = useState(null);
 
   const commitKw = (raw) => {
     const parts = raw.split(",").map(s => s.trim()).filter(Boolean);
@@ -36,6 +37,7 @@ export default function Home() {
 
   const updateAbstract = (i, v) => setAbstracts(arr => arr.map((a, idx) => idx === i ? v : a));
   const addAbstract = () => setAbstracts(arr => [...arr, ""]);
+  const removeAbstract = (i) => setAbstracts(arr => arr.filter((_, idx) => idx !== i));
 
   const onSearch = async (e) => {
     e.preventDefault();
@@ -139,14 +141,45 @@ export default function Home() {
 
           <div className="field-label" title="Paste one or more abstracts to search">Abstracts</div>
           {abstracts.map((val,i)=>(
-            <textarea
-              key={i}
-              className="textarea"
-              placeholder="Paste your research abstract here…"
-              value={val}
-              onChange={(e)=>updateAbstract(i, e.target.value)}
-              style={{marginBottom:10}}
-            />
+            <div key={i} style={{position:'relative', marginBottom:10}}>
+              <textarea
+                className="textarea"
+                placeholder="Paste your research abstract here…"
+                value={val}
+                onChange={(e)=>updateAbstract(i, e.target.value)}
+                style={{paddingRight:40}}
+              />
+              {abstracts.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => removeAbstract(i)}
+                  onMouseEnter={() => setHoveredAbstractIdx(i)}
+                  onMouseLeave={() => setHoveredAbstractIdx(null)}
+                  title="Remove this abstract"
+                  style={{
+                    position:'absolute',
+                    top:8,
+                    right:8,
+                    background:'transparent',
+                    border:'none',
+                    color: hoveredAbstractIdx === i ? '#991b1b' : '#dc2626',
+                    fontSize:22,
+                    cursor:'pointer',
+                    padding:0,
+                    width:28,
+                    height:28,
+                    display:'flex',
+                    alignItems:'center',
+                    justifyContent:'center',
+                    fontWeight:'bold',
+                    transform: hoveredAbstractIdx === i ? 'scale(1.2)' : 'scale(1)',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  ×
+                </button>
+              )}
+            </div>
           ))}
           <div style={{ marginTop: 8, display: "flex", justifyContent: "flex-end" }}>
             <button
