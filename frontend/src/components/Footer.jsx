@@ -15,7 +15,7 @@ const Footer = () => {
                     <div className="flex flex-wrap justify-center gap-6 mb-8">
                         <a href="#" className="text-gray-400 hover:text-white transition-colors">Privacy</a>
                         <a href="#" className="text-gray-400 hover:text-white transition-colors">Terms</a>
-                        <a href="mailto:info@proxima.org" className="text-gray-400 hover:text-white transition-colors">Contact</a>
+                        <a href="mailto:appproximaa@gmail.com" className="text-gray-400 hover:text-white transition-colors">Contact</a>
                     </div>
                     
                     <div className="border-t border-gray-800 pt-8">
@@ -23,7 +23,7 @@ const Footer = () => {
                             © 2025 Proxima | Powered by OpenAlex 
                         </p>
                         <p className="text-gray-500 text-sm mt-2">
-                            <a href="mailto:info@proxima.org" className="hover:text-gray-300 transition-colors">info@proxima.org</a>
+                            <a href="mailto:appproximaa@gmail.com" className="hover:text-gray-300 transition-colors">appproximaa@gmail.com</a>
                         </p>
                     </div>
                 </div>

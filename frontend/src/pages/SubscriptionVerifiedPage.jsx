@@ -124,8 +124,7 @@ export default function SubscriptionVerifiedPage() {
 
           {isSuccess && (
             <p className="mt-4 text-xs text-slate-400">
-              If you didn’t request this subscription, you can ignore this
-              email.
+              If you didn’t request this subscription, no action is required.
             </p>
           )}
         </div>

@@ -135,6 +135,36 @@ export async function unsubscribeSubscription(id, token) {
   }
   return true;
 }
+
+export async function deleteSubscription(id, token) {
+  const res = await fetch(
+    `${API_BASE}/api/subscriptions/${id}/delete/?token=${encodeURIComponent(token)}`,
+    {
+      method: "DELETE",
+    }
+  );
+  if (!res.ok && res.status !== 204) {
+    const text = await res.text();
+    throw new Error(`Failed to delete subscription (${res.status}): ${text}`);
+  }
+  return true;
+}
+
+export async function toggleSubscriptionActive(id, token) {
+  const res = await fetch(
+    `${API_BASE}/api/subscriptions/${id}/toggle-active/?token=${encodeURIComponent(token)}`,
+    {
+      method: "POST",
+    }
+  );
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`Failed to toggle subscription state (${res.status}): ${text}`);
+  }
+
+  return res.json();
+}
 // POST /api/eval-feedback/
 // body: { query: { abstracts, keywords }, choice: "left"|"right"|"both"|"none", comment?: string }
 export async function sendEvalFeedback(payload) {
