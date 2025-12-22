@@ -98,84 +98,123 @@ export default function SearchPage() {
 
   const page = Number(params.get("page") || 1);
 
+  // Dedupe + stale-response guards for async requests
+  const lastEmbeddingKeyRef = useRef(null);
+  const lastOpenAlexKeyRef = useRef(null);
+  const lastGeminiKeyRef = useRef(null);
+  const embeddingReqIdRef = useRef(0);
+  const openAlexReqIdRef = useRef(0);
+  const geminiReqIdRef = useRef(0);
+
+  const makeKey = (obj) => {
+    try {
+      return JSON.stringify(obj);
+    } catch {
+      return String(obj);
+    }
+  };
+
   useEffect(() => {
-    const { abstracts, keywords } = queryFromURL;
-  if (!abstracts.length && !keywords.length) return;
-    // 1) Main embedding-based search
-    // Embedding endpoint'ini sadece request/data henüz yoksa çağır.
-    if (!request || !data) {
+    const { abstracts, keywords, year_min, year_max } = queryFromURL;
+    if (!abstracts.length && !keywords.length) return;
+
+    // Keep UI query summary in sync with URL even before results arrive
+    setQuery(queryFromURL);
+    setRequest(queryFromURL);
+
+    // 1) Main embedding-based search (paged)
+    const embeddingKey = makeKey({ abstracts, keywords, year_min, year_max, page });
+    if (lastEmbeddingKeyRef.current !== embeddingKey) {
+      lastEmbeddingKeyRef.current = embeddingKey;
+      const reqId = ++embeddingReqIdRef.current;
+
       // Clear any previous pending/committed results so UI shows unified loading
       setPendingData(null);
       setData(null);
-      setLoading(true);
       setError("");
-
-      // include year filters from URL when present
-      const yearPayload = {};
-      if (queryFromURL.year_min) yearPayload.year_min = queryFromURL.year_min;
-      if (queryFromURL.year_max) yearPayload.year_max = queryFromURL.year_max;
+      setLoading(true);
 
       console.log("SearchPage: starting embedding search", { queryFromURL, page });
-      searchPapersPOST({ ...queryFromURL, ...yearPayload, page, per_page: 30 }) // Default increased to 30
+      searchPapersPOST({ abstracts, keywords, year_min, year_max, page, per_page: 30 })
         .then((res) => {
+          if (reqId !== embeddingReqIdRef.current) return;
           console.log("SearchPage: embedding response received", res?.results?.length, res);
-          setRequest(queryFromURL);
-          // Hold embedding response until OpenAlex sets arrive when eval is on
           setPendingData(res);
-          setQuery(queryFromURL);
           sessionStorage.setItem("lastSearch", JSON.stringify({ request: queryFromURL, data: res }));
         })
         .catch((e) => {
+          if (reqId !== embeddingReqIdRef.current) return;
           console.warn("SearchPage: embedding search failed", e);
           setError(e.message || "Search failed");
         })
-        .finally(() => setLoading(false));
+        .finally(() => {
+          if (reqId !== embeddingReqIdRef.current) return;
+          setLoading(false);
+        });
     }
 
-    // 2) Raw keyword-only OpenAlex search (only if evaluation flag is on and there are keywords)
+    // 2) Raw keyword-only OpenAlex search (eval mode, not paged)
     if (SHOW_EVAL && keywords && keywords.length) {
-      setLoadingOpenAlex(true);
-      console.log("SearchPage: starting OpenAlex keyword search", keywords);
-      searchOpenAlexKeywordPOST({ keywords, per_page: 30, year_min: queryFromURL.year_min, year_max: queryFromURL.year_max })
-        .then((raw) => {
-          console.log("SearchPage: OpenAlex keyword response", raw?.results?.length, raw);
-          setOpenAlexData(raw);
-        })
-        .catch((e) => {
-          console.warn("OpenAlex keyword search failed:", e);
-          setOpenAlexData(null);
-        })
-        .finally(() => setLoadingOpenAlex(false));
+      const openAlexKey = makeKey({ keywords, year_min, year_max });
+      if (lastOpenAlexKeyRef.current !== openAlexKey) {
+        lastOpenAlexKeyRef.current = openAlexKey;
+        const reqId = ++openAlexReqIdRef.current;
+        setOpenAlexData(null);
+        setLoadingOpenAlex(true);
+        console.log("SearchPage: starting OpenAlex keyword search", keywords);
+        searchOpenAlexKeywordPOST({ keywords, per_page: 30, year_min, year_max })
+          .then((raw) => {
+            if (reqId !== openAlexReqIdRef.current) return;
+            console.log("SearchPage: OpenAlex keyword response", raw?.results?.length, raw);
+            setOpenAlexData(raw);
+          })
+          .catch((e) => {
+            if (reqId !== openAlexReqIdRef.current) return;
+            console.warn("OpenAlex keyword search failed:", e);
+            setOpenAlexData(null);
+          })
+          .finally(() => {
+            if (reqId !== openAlexReqIdRef.current) return;
+            setLoadingOpenAlex(false);
+          });
+      }
     } else {
+      lastOpenAlexKeyRef.current = null;
       setOpenAlexData(null);
       setLoadingOpenAlex(false);
     }
 
-    // 3) Gemini+user keywords OpenAlex search (3rd column in eval mode)
+    // 3) Gemini+user keywords OpenAlex search (eval mode, not paged)
     if (SHOW_EVAL && abstracts && abstracts.length && keywords && keywords.length) {
-      setLoadingGemini(true);
-      console.log("SearchPage: starting OpenAlex Gemini search");
-      searchOpenAlexGeminiPOST({
-        abstracts,
-        keywords,
-        per_page: 30,
-        year_min: queryFromURL.year_min,
-        year_max: queryFromURL.year_max,
-      })
-        .then((raw) => {
-          console.log("SearchPage: OpenAlex Gemini response", raw?.results?.length, raw);
-          setOpenAlexGeminiData(raw);
-        })
-        .catch((e) => {
-          console.warn("OpenAlex Gemini keyword search failed:", e);
-          setOpenAlexGeminiData(null);
-        })
-        .finally(() => setLoadingGemini(false));
+      const geminiKey = makeKey({ abstracts, keywords, year_min, year_max });
+      if (lastGeminiKeyRef.current !== geminiKey) {
+        lastGeminiKeyRef.current = geminiKey;
+        const reqId = ++geminiReqIdRef.current;
+        setOpenAlexGeminiData(null);
+        setLoadingGemini(true);
+        console.log("SearchPage: starting OpenAlex Gemini search");
+        searchOpenAlexGeminiPOST({ abstracts, keywords, per_page: 30, year_min, year_max })
+          .then((raw) => {
+            if (reqId !== geminiReqIdRef.current) return;
+            console.log("SearchPage: OpenAlex Gemini response", raw?.results?.length, raw);
+            setOpenAlexGeminiData(raw);
+          })
+          .catch((e) => {
+            if (reqId !== geminiReqIdRef.current) return;
+            console.warn("OpenAlex Gemini keyword search failed:", e);
+            setOpenAlexGeminiData(null);
+          })
+          .finally(() => {
+            if (reqId !== geminiReqIdRef.current) return;
+            setLoadingGemini(false);
+          });
+      }
     } else {
+      lastGeminiKeyRef.current = null;
       setOpenAlexGeminiData(null);
       setLoadingGemini(false);
     }
-  }, [queryFromURL, page, request, data]);
+  }, [queryFromURL, page]);
 
   // Commit pending embedding result to `data` only when all required eval sets are present.
   useEffect(() => {
@@ -185,14 +224,16 @@ export default function SearchPage() {
     const requiresOpenAlex = SHOW_EVAL && (queryFromURL.keywords || []).length > 0;
     const requiresGemini = SHOW_EVAL && (queryFromURL.abstracts || []).length > 0 && (queryFromURL.keywords || []).length > 0;
 
-    const openAlexReady = !requiresOpenAlex || !!openAlexData;
-    const geminiReady = !requiresGemini || !!openAlexGeminiData;
+    // Treat completion (loading flag false) as "ready" even if the request failed and data is null,
+    // so eval mode cannot get stuck forever.
+    const openAlexReady = !requiresOpenAlex || !loadingOpenAlex;
+    const geminiReady = !requiresGemini || !loadingGemini;
 
     if (openAlexReady && geminiReady) {
       setData(pendingData);
       setPendingData(null);
     }
-  }, [pendingData, openAlexData, openAlexGeminiData, queryFromURL]);
+  }, [pendingData, loadingOpenAlex, loadingGemini, queryFromURL]);
 
   // Tüm ilgili sütunlar (geçerli oldukları durumda) hazır mı?
   const abstracts = queryFromURL.abstracts;
@@ -200,28 +241,13 @@ export default function SearchPage() {
 
   const allReady =
     !!data &&
-    (!SHOW_EVAL || !keywords.length || !!openAlexData) &&
-    (!SHOW_EVAL || !abstracts.length || !keywords.length || !!openAlexGeminiData);
+    (!SHOW_EVAL || !keywords.length || !loadingOpenAlex) &&
+    (!SHOW_EVAL || !abstracts.length || !keywords.length || !loadingGemini);
 
   const gotoPage = (p) => {
     const next = new URLSearchParams(params);
     next.set("page", String(p));
     setParams(next);
-    if (request) {
-      setLoading(true);
-      const yMin = params.get("year_min");
-      const yMax = params.get("year_max");
-      const yearPayload = {};
-      if (yMin) yearPayload.year_min = Number(yMin);
-      if (yMax) yearPayload.year_max = Number(yMax);
-
-      searchPapersPOST({ ...request, ...yearPayload, page: p, per_page: 30 }) // Default increased to 30
-        .then((res) => {
-          setData(res);
-          sessionStorage.setItem("lastSearch", JSON.stringify({ request, data: res }));
-        })
-        .finally(() => setLoading(false));
-    }
   };
 
   const handleEvalSubmit = async ({ choice, comment }) => {
@@ -291,14 +317,16 @@ export default function SearchPage() {
     if (newQuery && typeof newQuery.year_min !== 'undefined') nextQuery.year_min = newQuery.year_min;
     if (newQuery && typeof newQuery.year_max !== 'undefined') nextQuery.year_max = newQuery.year_max;
 
-  // QuerySummary'de gösterilen metni sonuç beklemeden hemen güncelle
-  setQuery(nextQuery);
+    // QuerySummary'de gösterilen metni sonuç beklemeden hemen güncelle
+    setQuery(nextQuery);
 
-  // Clear previous results so the UI shows a unified loading state
-  // In eval mode we want to wait for all three result sets before rendering.
-  setData(null);
-  setOpenAlexData(null);
-  setOpenAlexGeminiData(null);
+    // Clear previous results so the UI shows a unified loading state
+    // In eval mode we want to wait for all three result sets before rendering.
+    setPendingData(null);
+    setData(null);
+    setOpenAlexData(null);
+    setOpenAlexGeminiData(null);
+    setError("");
 
     // Build URL params (prefer explicit years from nextQuery, otherwise local inputs)
     const next = new URLSearchParams();
@@ -317,70 +345,6 @@ export default function SearchPage() {
       if (yearMax) next.set('year_max', String(yearMax)); else next.delete('year_max');
     }
     setParams(next);
-
-  setLoading(true);
-  // set loading flags for eval sub-requests
-  setLoadingOpenAlex(!!(SHOW_EVAL && safeKeywords.length));
-  setLoadingGemini(!!(SHOW_EVAL && safeAbstracts.length && safeKeywords.length));
-    setError("");
-    const yearPayload = {};
-    if (typeof nextQuery.year_min !== 'undefined') {
-      if (nextQuery.year_min) yearPayload.year_min = Number(nextQuery.year_min);
-    } else {
-      if (yearMin) yearPayload.year_min = Number(yearMin);
-    }
-    if (typeof nextQuery.year_max !== 'undefined') {
-      if (nextQuery.year_max) yearPayload.year_max = Number(nextQuery.year_max);
-    } else {
-      if (yearMax) yearPayload.year_max = Number(yearMax);
-    }
-
-    // derive explicit yMin/yMax to use for all outgoing requests immediately
-    const yMin = typeof yearPayload.year_min !== 'undefined' ? yearPayload.year_min : undefined;
-    const yMax = typeof yearPayload.year_max !== 'undefined' ? yearPayload.year_max : undefined;
-
-    searchPapersPOST({ abstracts: safeAbstracts, keywords: safeKeywords, page: 1, per_page: 30, ...yearPayload })
-      .then((res) => {
-        setRequest(nextQuery);
-        setData(res);
-        sessionStorage.setItem("lastSearch", JSON.stringify({ request: nextQuery, data: res }));
-      })
-      .catch((e) => setError(e.message || "Search failed"))
-      .finally(() => setLoading(false));
-
-    // Trigger fresh raw OpenAlex keyword search as well (only when evaluation flag is on)
-    if (SHOW_EVAL && safeKeywords.length) {
-      searchOpenAlexKeywordPOST({ keywords: safeKeywords, per_page: 30, year_min: yMin, year_max: yMax })
-        .then((raw) => setOpenAlexData(raw))
-        .catch((e) => {
-          console.warn("OpenAlex keyword search failed:", e);
-          setOpenAlexData(null);
-        })
-        .finally(() => setLoadingOpenAlex(false));
-    } else {
-      setOpenAlexData(null);
-      setLoadingOpenAlex(false);
-    }
-
-    // Trigger Gemini+user keywords OpenAlex search for 3rd column (needs both abstracts and keywords)
-    if (SHOW_EVAL && safeAbstracts.length && safeKeywords.length) {
-      searchOpenAlexGeminiPOST({
-        abstracts: safeAbstracts,
-        keywords: safeKeywords,
-        per_page: 30,
-        year_min: yMin,
-        year_max: yMax,
-      })
-        .then((raw) => setOpenAlexGeminiData(raw))
-        .catch((e) => {
-          console.warn("OpenAlex Gemini keyword search failed:", e);
-          setOpenAlexGeminiData(null);
-        })
-        .finally(() => setLoadingGemini(false));
-    } else {
-      setOpenAlexGeminiData(null);
-      setLoadingGemini(false);
-    }
   };
 
   const queryParamsForSubscription = useMemo(() => {
