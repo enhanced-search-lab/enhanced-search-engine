@@ -11,6 +11,27 @@ import re
 from django.conf import settings
 from django.db.models import Q
 from api.models.subscriberModel import Subscriber
+from django.core import signing
+from urllib.parse import urlparse
+
+
+def _sanitize_header_value(s):
+    """Remove CR/LF and control characters that may break email headers.
+    Replace runs of whitespace/newlines with a single space and strip.
+    """
+    if s is None:
+        return ""
+    # Ensure string
+    try:
+        val = str(s)
+    except Exception:
+        val = ""
+    # Remove carriage returns/newlines and other C0 control chars
+    # keep printable whitespace as single spaces
+    val = re.sub(r"[\r\n\t]+", " ", val)
+    # strip remaining control chars (except normal printable range)
+    val = re.sub(r"[\x00-\x1f\x7f]+", "", val)
+    return val.strip()
 
 
 def score_work_against_subscription(work_text, subscription):
@@ -126,11 +147,28 @@ class Command(BaseCommand):
                 self.stderr.write(f"Error running rerank pipeline for sub {sub.id}: {e}")
                 scored = []
 
-            # take top positives
-            chosen = [e for e in scored if e.get('total_score', 0) > 0][:5]
+            # apply a similarity threshold before selecting items to include in the email
+            threshold = float(getattr(settings, 'WEEKLY_MIN_SIMILARITY_PERCENT', 65))
+            # compute score_percent for each candidate and keep only those >= threshold
+            scored_with_pct = []
+            for entry in scored:
+                sims = entry.get('per_abstract_sims') or []
+                if sims:
+                    avg_sim = sum(sims) / len(sims)
+                    score_percent = round(avg_sim * 100, 2)
+                else:
+                    score_percent = 0.0
+                scored_with_pct.append((entry, score_percent))
+
+            # filter by threshold and sort by descending score_percent
+            filtered = [t for t in scored_with_pct if (t[1] or 0) >= threshold]
+            filtered.sort(key=lambda x: x[1], reverse=True)
+
+            # take up to 5 best items
+            chosen = [t[0] for t in filtered[:5]]
 
             items = []
-            max_score = chosen[0]['total_score'] if chosen else 1.0
+            max_score = filtered[0][1] if filtered else 1.0
             for entry in chosen:
                 w = entry['work']
                 wid, title, abstract_text, topics_text, concepts_text = work_to_text_fields(w)
@@ -189,15 +227,35 @@ class Command(BaseCommand):
                         pass
 
                 manage_url = f"{settings.SUBSCRIPTION_FRONTEND_MANAGE_URL}?token={subscriber.manage_token}"
+                # Add signed goodmatch links per item (single-click recording)
+                # Use explicit backend base URL (avoid pointing links to frontend dev server)
+                base_site = getattr(settings, 'SUBSCRIPTION_BACKEND_BASE_URL', '') or getattr(settings, 'SITE_URL', '')
+
+                for it in items:
+                    payload = {
+                        'subscriber_token': subscriber.manage_token,
+                        'work_id': it.get('openalex_url', '').rsplit('/', 1)[-1],
+                        'title': it.get('title', ''),
+                        'openalex_url': it.get('openalex_url', ''),
+                        'subscription_id': sub.id,
+                        'score_percent': it.get('score_percent', 0),
+                    }
+                    signed = signing.dumps(payload, salt='goodmatch-v1')
+                    site_root = (base_site or '').rstrip('/')
+                    it['goodmatch_link'] = f"{site_root}/api/goodmatch/record/?gm={signed}"
+
+                safe_search_name = _sanitize_header_value(sub.query_name or 'Your search')
+
                 context = {
-                    'search_name': sub.query_name or 'Your search',
+                    'search_name': safe_search_name,
                     'new_items': items,
                     'manage_url': manage_url,
                     'subscription_keywords': subscription_keywords,
                     'subscription_abstracts': subscription_abstracts,
                 }
                 html = render_to_string('subscriptions/weekly_update_email.html', context)
-                subject = f"[Proxima] — Weekly update for {sub.query_name or 'your search'}"
+                # sanitize subject to avoid header injection / invalid header chars
+                subject = f"[Proxima] — Weekly update for {safe_search_name}"
                 from_email = settings.DEFAULT_FROM_EMAIL
                 to = [sub.email]
                 msg = EmailMultiAlternatives(subject=subject, body=html, from_email=from_email, to=to)

@@ -25,15 +25,15 @@ const ErrorDisplay = ({ message }) => (
 );
 
 // hideSimilarity: evaluation modunda kart üzerindeki similarity badge'ini gizlemek için opsiyonel flag
-export default function SearchResultsList({ results = [], loading, error, hideSimilarity = false }) {
+export default function SearchResultsList({ results = [], loading, error, hideSimilarity = false, compact = false }) {
   if (loading) return <LoadingSkeleton />;
   if (error) return <ErrorDisplay message={error} />;
   if (!results.length) return <p style={{textAlign:"center", color:"#6b7280", marginTop:24}}>No results found.</p>;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+    <div className={compact ? 'eval-compact' : ''} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       {results.map((paper) => (
-        <PaperCard key={paper.id} paper={paper} hideSimilarity={hideSimilarity} />
+        <PaperCard key={paper.id} paper={paper} hideSimilarity={hideSimilarity} compact={compact} />
       ))}
     </div>
   );

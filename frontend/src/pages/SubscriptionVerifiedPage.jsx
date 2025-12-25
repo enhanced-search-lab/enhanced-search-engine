@@ -107,6 +107,7 @@ export default function SubscriptionVerifiedPage() {
             <button
               onClick={handleBackToSearch}
               disabled={loading}
+              title={loading ? "Opening search..." : "Open this subscription as a search"}
               className="inline-flex items-center rounded-full bg-violet-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-violet-700 disabled:opacity-60"
             >
               {loading ? "Opening search..." : "Back to search"}
@@ -115,6 +116,7 @@ export default function SubscriptionVerifiedPage() {
             <button
               type="button"
               onClick={() => navigate("/")}
+              title="Go to homepage"
               className="inline-flex items-center rounded-full border border-slate-200 px-5 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
             >
               Go to homepage

@@ -177,7 +177,8 @@ def fetch_openalex_candidates(query: str, per_page: int = 30, from_publication_d
         "sort": "relevance_score:desc",
         "mailto": MAILTO,
     }
-    resp = requests.get(BASE_URL, params=params, timeout=60)
+    # Use a shorter timeout to fail faster when upstream is slow; avoids long blocking that can trigger client disconnects.
+    resp = requests.get(BASE_URL, params=params, timeout=30)
     resp.raise_for_status()
     data = resp.json()
     results = data.get("results", [])

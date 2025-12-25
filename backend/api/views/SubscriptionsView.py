@@ -13,6 +13,8 @@ from ..model_serializers.SubscriptionCreateSerializer import SubscriptionCreateS
 from ..model_serializers.SubscriptionCreateSerializer import SubscriptionListSerializer
 from .. model_serializers.SubscriptionDetailSerializer import SubscriptionDetailSerializer  
 from ..emails import send_verification_email
+from django.db import IntegrityError
+from django.db import transaction
 
 
 class SubscriptionCreateView(APIView):
@@ -35,12 +37,31 @@ class SubscriptionCreateView(APIView):
         
         # ... create/get Subscription, send email, return JSON ...
         # For example:
-        sub, created = Subscription.objects.get_or_create(
-            email=email,
-            query_name=query_name,
-            abstracts=abstracts,
-            keywords=keywords,
-        )
+        try:
+            # Use a transaction to avoid race conditions and catch unique constraint
+            with transaction.atomic():
+                sub, created = Subscription.objects.get_or_create(
+                    email=email,
+                    query_name=query_name,
+                    defaults={
+                        "abstracts": abstracts,
+                        "keywords": keywords,
+                    },
+                )
+        except IntegrityError as e:
+            # Likely a unique constraint violation from concurrent requests.
+            # Try to fetch the existing subscription and return a friendly message
+            existing = Subscription.objects.filter(email__iexact=email, query_name__iexact=query_name).first()
+            if existing:
+                return Response(
+                    {"detail": "A subscription with this email and query name already exists.", "subscription_id": existing.id},
+                    status=status.HTTP_200_OK,
+                )
+            # If we couldn't resolve it, return a 400 with the DB error message trimmed
+            return Response(
+                {"detail": "Could not create subscription: database constraint.", "error": str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
           # 🆕 Subscriber alanı boşsa doldur
         if sub.subscriber_id is None:

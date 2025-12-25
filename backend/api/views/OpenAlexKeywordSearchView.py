@@ -57,13 +57,29 @@ class OpenAlexKeywordSearchView(APIView):
         except (TypeError, ValueError):
             per_page = 30
 
+        # optional year bounds
+        year_min = request.data.get("year_min")
+        year_max = request.data.get("year_max")
+        from_pub = None
+        to_pub = None
+        try:
+            if year_min is not None:
+                from_pub = f"{int(year_min)}-01-01"
+        except Exception:
+            from_pub = None
+        try:
+            if year_max is not None:
+                to_pub = f"{int(year_max)}-12-31"
+        except Exception:
+            to_pub = None
+
         per_page = max(1, min(per_page, 200))
 
         # Build simple search string for OpenAlex
         query = " ".join(clean_keywords)
 
         try:
-            works = fetch_openalex_candidates(query=query, per_page=per_page)
+            works = fetch_openalex_candidates(query=query, per_page=per_page, from_publication_date=from_pub, to_publication_date=to_pub)
         except Exception as exc:
             return Response(
                 {"detail": f"Error while querying OpenAlex with keywords: {exc}"},

@@ -12,14 +12,45 @@ const KeywordChip = ({ keyword, onRemove }) => (
 const EditQueryModal = ({ isOpen, onClose, currentQuery, onApply }) => {
     const [abstracts, setAbstracts] = useState(['']);
     const [keywords, setKeywords] = useState([]);
+    const [yearMin, setYearMin] = useState('');
+    const [yearMax, setYearMax] = useState('');
+    const [yearError, setYearError] = useState('');
+    const [isYearValid, setIsYearValid] = useState(true);
     const [keywordInput, setKeywordInput] = useState('');
 
     useEffect(() => {
         if (isOpen) {
             setAbstracts(currentQuery.abstracts?.length ? [...currentQuery.abstracts] : ['']);
             setKeywords(currentQuery.keywords ? [...currentQuery.keywords] : []);
+            setYearMin(currentQuery.year_min != null ? String(currentQuery.year_min) : '');
+            setYearMax(currentQuery.year_max != null ? String(currentQuery.year_max) : '');
         }
     }, [isOpen, currentQuery]);
+
+    // Live validation for year inputs
+    useEffect(() => {
+        setYearError('');
+        setIsYearValid(true);
+        const curYear = new Date().getFullYear();
+        const minVal = yearMin !== '' ? Number(yearMin) : null;
+        const maxVal = yearMax !== '' ? Number(yearMax) : null;
+
+        if (minVal !== null && (Number.isNaN(minVal) || minVal < 1900 || minVal > curYear)) {
+            setYearError(`Min year must be between 1900 and ${curYear}`);
+            setIsYearValid(false);
+            return;
+        }
+        if (maxVal !== null && (Number.isNaN(maxVal) || maxVal < 1900 || maxVal > curYear)) {
+            setYearError(`Max year must be between 1900 and ${curYear}`);
+            setIsYearValid(false);
+            return;
+        }
+        if (minVal !== null && maxVal !== null && minVal > maxVal) {
+            setYearError('Min year cannot be greater than max year');
+            setIsYearValid(false);
+            return;
+        }
+    }, [yearMin, yearMax]);
 
     if (!isOpen) return null;
 
@@ -44,7 +75,10 @@ const EditQueryModal = ({ isOpen, onClose, currentQuery, onApply }) => {
     const handleApply = () => {
         const updatedQuery = {
             abstracts: abstracts.map(a => a.trim()).filter(Boolean),
-            keywords: keywords
+            keywords: keywords,
+            // Return explicit null when empty so caller can distinguish "cleared" vs "not-provided".
+            year_min: yearMin ? Number(yearMin) : null,
+            year_max: yearMax ? Number(yearMax) : null,
         };
         onApply(updatedQuery);
         onClose();
@@ -61,8 +95,8 @@ const EditQueryModal = ({ isOpen, onClose, currentQuery, onApply }) => {
                     <div className="space-y-5 overflow-y-auto flex-1 pr-1" style={{ minHeight: '200px' }}>
                         <div>
                             <div className="flex items-center justify-between mb-2">
-                                <label className="text-sm font-medium text-gray-700">Abstracts</label>
-                                <button onClick={handleAddAbstract} className="text-sm px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg">+ Add abstract</button>
+                                <label className="text-sm font-medium text-gray-700" title="Paste one or more abstracts to search">Abstracts</label>
+                                <button onClick={handleAddAbstract} title="Add another abstract" className="text-sm px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg">+ Add abstract</button>
                             </div>
                             <div className="space-y-3">
                                 {abstracts.map((abs, i) => (
@@ -86,7 +120,7 @@ const EditQueryModal = ({ isOpen, onClose, currentQuery, onApply }) => {
                         </div>
 
                         <div>
-                            <label className="text-sm font-medium text-gray-700 mb-1 block">Keywords</label>
+                            <label className="text-sm font-medium text-gray-700 mb-1 block" title="Keywords — separate multiple with commas">Keywords</label>
                             <div className="flex flex-wrap items-center gap-2 p-2 border border-gray-300 rounded-lg">
                                 {keywords.map((kw, i) => <KeywordChip key={`${kw}-${i}`} keyword={kw} onRemove={() => removeKeyword(kw)} />)}
                                 <input
@@ -99,11 +133,41 @@ const EditQueryModal = ({ isOpen, onClose, currentQuery, onApply }) => {
                                 />
                             </div>
                         </div>
+
+                        <div>
+                            <label className="text-sm font-medium text-gray-700 mb-1 block" title="Publication year — single year or range. Leave empty to disable">Year filter</label>
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="number"
+                                    placeholder="min"
+                                    className="px-3 py-2 border rounded-md w-28"
+                                    value={yearMin}
+                                    onChange={e => setYearMin(e.target.value)}
+                                />
+                                <span className="text-gray-500">—</span>
+                                <input
+                                    type="number"
+                                    placeholder="max"
+                                    className="px-3 py-2 border rounded-md w-28"
+                                    value={yearMax}
+                                    onChange={e => setYearMax(e.target.value)}
+                                />
+                                <button type="button" title="Clear year inputs" className="link-sm ml-2" onClick={() => { setYearMin(''); setYearMax(''); setYearError(''); setIsYearValid(true); }}>
+                                    Clear
+                                </button>
+                                <div style={{ fontSize: 12, color: '#6b7280' }} className="ml-3">Leave empty to disable</div>
+                            </div>
+                            {yearError && (
+                                <div style={{ color: '#b91c1c', marginTop: 8, fontSize: 13 }}>{yearError}</div>
+                            )}
+                        </div>
                     </div>
 
                     <div className="flex gap-3 mt-6 pt-4 border-t border-gray-100">
                         <button onClick={onClose} className="flex-1 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium">Cancel</button>
-                        <button onClick={handleApply} className="flex-1 px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium">Apply & Search</button>
+                                                <button onClick={handleApply} disabled={!isYearValid} className={`flex-1 px-4 py-3 rounded-lg font-medium ${isYearValid ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`}>
+                                                    Apply & Search
+                                                </button>
                     </div>
                 </div>
             </div>

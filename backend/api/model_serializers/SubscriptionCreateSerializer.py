@@ -25,6 +25,21 @@ class SubscriptionCreateSerializer(serializers.ModelSerializer):
             )
         return value
 
+    def validate(self, attrs):
+        """
+        Prevent creating multiple subscriptions with the same email and query_name.
+        This gives a friendly error before hitting a DB integrity error.
+        """
+        email = attrs.get("email")
+        query_name = attrs.get("query_name")
+        # case-insensitive comparison for query name to avoid dupes due to capitalization
+        if email and query_name:
+            if Subscription.objects.filter(email__iexact=email, query_name__iexact=query_name).exists():
+                raise serializers.ValidationError(
+                    "A subscription with this email and query name already exists."
+                )
+        return attrs
+
 
 # 🆕 Manage page listesi için basit serializer
 class SubscriptionListSerializer(serializers.ModelSerializer):

@@ -302,6 +302,9 @@
                               <a href="{{ item.oa_url|default:item.openalex_url }}" class="kpi kpi-oa">🌐 Open Access</a>
                             {% endif %}
                             <a href="{{ item.openalex_url }}" class="kpi kpi-link">↗ OpenAlex</a>
+                            {% if item.goodmatch_link %}
+                              <a href="{{ item.goodmatch_link }}" class="kpi kpi-link" style="background:#ffe7f3; border-color:#fbcfe8; color:#9d174d;">❤️ Mark as good match</a>
+                            {% endif %}
                           </div>
                         </td>
                       </tr>

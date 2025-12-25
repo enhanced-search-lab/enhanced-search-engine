@@ -111,11 +111,29 @@ class OpenAlexGeminiKeywordSearchView(APIView):
             )
 
         # 4) Progressive relaxation ile tek OpenAlex araması  !!
+        # Optional year bounds passed to OpenAlex progressive fetch
+        year_min = request.data.get("year_min")
+        year_max = request.data.get("year_max")
+        from_pub = None
+        to_pub = None
+        try:
+            if year_min is not None:
+                from_pub = f"{int(year_min)}-01-01"
+        except Exception:
+            from_pub = None
+        try:
+            if year_max is not None:
+                to_pub = f"{int(year_max)}-12-31"
+        except Exception:
+            to_pub = None
+
         try:
             works, final_query = fetch_with_progressive_relaxation(
                 tokens=combined_tokens,
                 per_page=per_page,
                 min_terms=1,
+                from_publication_date=from_pub,
+                to_publication_date=to_pub,
             )
             print(f"!! [GEMINI PIPELINE] Final query: {final_query}")
         except Exception as exc:

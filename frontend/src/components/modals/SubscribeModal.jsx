@@ -69,7 +69,7 @@ const SubscribeModal = ({ isOpen, onClose, queryParams, initialQueryName = "" })
           className="modal-in bg-white rounded-xl shadow-2xl max-w-md w-full p-6"
           onClick={stopPropagation}
         >
-          <div className="text-center mb-4">
+            <div className="text-center mb-4">
             <div className="text-4xl mb-2">📬</div>
             <h3 className="text-lg font-semibold text-gray-900">
               Subscribe to this query
@@ -81,7 +81,7 @@ const SubscribeModal = ({ isOpen, onClose, queryParams, initialQueryName = "" })
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2" title="Name shown in emails and in your subscriptions list">
                 Query name
               </label>
               <input
@@ -92,10 +92,11 @@ const SubscribeModal = ({ isOpen, onClose, queryParams, initialQueryName = "" })
                 defaultValue={initialQueryName}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 placeholder="e.g., Transformers in NLP"
+                title="Name shown in emails and in your subscriptions list"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2" title="We'll send a verification link and weekly updates to this address">
                 Email address
               </label>
               <input
@@ -105,6 +106,7 @@ const SubscribeModal = ({ isOpen, onClose, queryParams, initialQueryName = "" })
                 required
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 placeholder="your.email@example.com"
+                title="We'll send a verification link and weekly updates to this address"
               />
             </div>
             <div className="flex items-start space-x-3">
@@ -118,6 +120,7 @@ const SubscribeModal = ({ isOpen, onClose, queryParams, initialQueryName = "" })
               <label
                 htmlFor="queryConfirm"
                 className="text-sm text-gray-600 cursor-pointer"
+                title="Required to receive email updates"
               >
                 I agree to receive email notifications for this query.
               </label>
@@ -133,6 +136,7 @@ const SubscribeModal = ({ isOpen, onClose, queryParams, initialQueryName = "" })
               <button
                 type="button"
                 onClick={onClose}
+                title="Cancel subscription creation"
                 className="flex-1 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium"
                 disabled={loading}
               >
@@ -140,6 +144,7 @@ const SubscribeModal = ({ isOpen, onClose, queryParams, initialQueryName = "" })
               </button>
               <button
                 type="submit"
+                title="Create subscription (you'll verify via email)"
                 className="flex-1 px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
                 disabled={loading}
               >

@@ -18,6 +18,7 @@ from .views.SubscriptionsView import (
 from .views.OpenAlexKeywordSearchView import OpenAlexKeywordSearchView
 from .views.OpenAlexGeminiKeywordSearchView import OpenAlexGeminiKeywordSearchView
 from .views.EvalFeedbackView import EvalFeedbackView
+from .views.GoodMatchView import record_goodmatch, list_goodmatches, delete_goodmatch
 
 # Build RESTful routes (list/detail) for built-in resources
 router = DefaultRouter()
@@ -63,5 +64,9 @@ urlpatterns = [
         SubscriptionDeleteView.as_view(),
         name="subscription-delete",
     ),
+    # GoodMatch single-click recording (used by weekly email 'Mark as good match' links)
+    path("goodmatch/record/", record_goodmatch, name="goodmatch-record"),
+    path("goodmatches/", list_goodmatches, name="goodmatch-list"),
+    path("goodmatches/<int:pk>/delete/", delete_goodmatch, name="goodmatch-delete"),
 
 ]

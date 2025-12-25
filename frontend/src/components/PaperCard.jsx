@@ -3,7 +3,7 @@ import React, { useState } from "react";
 const fmt = (n) => (typeof n === "number" ? n.toLocaleString() : "0");
 
 // hideSimilarity: evaluation modunda similarity badge'ini gizlemek için opsiyonel flag
-export default function PaperCard({ paper, hideSimilarity = false }) {
+export default function PaperCard({ paper, hideSimilarity = false, compact = false }) {
   const [expanded, setExpanded] = useState(false);
 
   const authorsText =
@@ -14,17 +14,17 @@ export default function PaperCard({ paper, hideSimilarity = false }) {
   const shown = expanded ? abs : abs.slice(0, 260);
 
   return (
-    <article className="result-card">
+  <article className={`result-card ${compact ? 'compact' : ''}`}>
       <div className="rc-title">
         <a href={paper.url} target="_blank" rel="noreferrer">{paper.title}</a>
-        <div style={{ display: "flex", gap: 8 }}>
+  <div style={{ display: "flex", gap: 8 }}>
           {!hideSimilarity && paper.per_abstract_sims && paper.per_abstract_sims.length > 0 && (
-            <span
+              <span
               className="badge badge-green"
               style={{
                 padding: "6px 12px",
                 borderRadius: "15px",
-                fontSize: "0.9rem",
+                fontSize: compact ? "0.78rem" : "0.9rem",
                 fontWeight: "bold",
                 display: "flex", /* Use flexbox for centering */
                 justifyContent: "center", /* Center text horizontally */
@@ -49,6 +49,7 @@ export default function PaperCard({ paper, hideSimilarity = false }) {
               target="_blank"
               rel="noreferrer"
               className="badge badge-amber"
+              title="Open access link"
               style={{
                 padding: "6px 12px",
                 borderRadius: "15px",
@@ -82,7 +83,7 @@ export default function PaperCard({ paper, hideSimilarity = false }) {
           {shown}
           {needsToggle && !expanded && "… "}
           {needsToggle && (
-            <button onClick={() => setExpanded((v) => !v)}>
+            <button title={expanded ? "Collapse abstract" : "Expand abstract"} onClick={() => setExpanded((v) => !v)}>
               {expanded ? "Show less" : "Show more"}
             </button>
           )}

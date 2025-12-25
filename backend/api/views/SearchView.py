@@ -74,14 +74,31 @@ class PaperSearchView(APIView):
             # keywords listesi → raw string
             user_keywords_raw = ";".join([k for k in keywords if k.strip()])
 
-            # TOP_K: pagination için bir üst sınır (en az sayfa*per_page, en az 300)
-            TOP_K = max(page * per_page, 300)
+            # TOP_K: pagination için bir üst sınır (en az sayfa*per_page, en az 150)
+            # Reduced default to 150 to limit work per request and avoid long-running requests that can cause client disconnects.
+            TOP_K = max(page * per_page, 150)
+
+            # Map year_min/year_max into ISO-like date bounds for OpenAlex
+            from_pub = None
+            to_pub = None
+            if year_min is not None:
+                try:
+                    from_pub = f"{int(year_min)}-01-01"
+                except Exception:
+                    from_pub = None
+            if year_max is not None:
+                try:
+                    to_pub = f"{int(year_max)}-12-31"
+                except Exception:
+                    to_pub = None
 
             scored = rerank_openalex_for_abstracts(
                 abstracts=abstracts,
                 user_keywords_raw=user_keywords_raw,
-                per_group=30,
+                per_group=30,  # fetch fewer candidates per group to speed up pipeline
                 top_k=TOP_K,
+                from_publication_date=from_pub,
+                to_publication_date=to_pub,
             )
         except requests.RequestException as exc:
             return Response(
