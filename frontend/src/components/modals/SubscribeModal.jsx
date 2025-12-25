@@ -55,8 +55,6 @@ const SubscribeModal = ({ isOpen, onClose, queryParams, initialQueryName = "" })
     } finally {
       setLoading(false);
     }
-    console.log("Subscribe queryParams:", queryParams);
-
   };
 
   const stopPropagation = (e) => e.stopPropagation();

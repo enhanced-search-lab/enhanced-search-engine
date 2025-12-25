@@ -24,6 +24,10 @@ export default function SearchPage() {
   const [params, setParams] = useSearchParams();
   const [subscribeOpen, setSubscribeOpen] = useState(false);
 
+  // Keep the initial navigation state (e.g. coming from Home) so we can reuse
+  // its already-fetched results and avoid a duplicate request.
+  const initialNavStateRef = useRef(location.state ?? null);
+
 
   const boot =
     location.state ??
@@ -114,6 +118,26 @@ export default function SearchPage() {
     }
   };
 
+  const normalizeQueryForCompare = (q) => {
+    const abstracts = Array.isArray(q?.abstracts) ? q.abstracts : [];
+    const keywords = Array.isArray(q?.keywords) ? q.keywords : [];
+    const yearMinRaw = q?.year_min;
+    const yearMaxRaw = q?.year_max;
+    const year_min = yearMinRaw === null || typeof yearMinRaw === "undefined" || yearMinRaw === ""
+      ? null
+      : Number(yearMinRaw);
+    const year_max = yearMaxRaw === null || typeof yearMaxRaw === "undefined" || yearMaxRaw === ""
+      ? null
+      : Number(yearMaxRaw);
+
+    return {
+      abstracts: abstracts.map((a) => String(a)),
+      keywords: keywords.map((k) => String(k)),
+      year_min: Number.isFinite(year_min) ? year_min : null,
+      year_max: Number.isFinite(year_max) ? year_max : null,
+    };
+  };
+
   useEffect(() => {
     const { abstracts, keywords, year_min, year_max } = queryFromURL;
     if (!abstracts.length && !keywords.length) return;
@@ -125,6 +149,20 @@ export default function SearchPage() {
     // 1) Main embedding-based search (paged)
     const embeddingKey = makeKey({ abstracts, keywords, year_min, year_max, page });
     if (lastEmbeddingKeyRef.current !== embeddingKey) {
+      // If we arrived here from Home with pre-fetched results for the same query,
+      // reuse them and skip a redundant network request.
+      const nav = initialNavStateRef.current;
+      const navReq = nav?.request;
+      const navData = nav?.data;
+      const navMatchesQuery = !!navReq && makeKey(normalizeQueryForCompare(navReq)) === makeKey(normalizeQueryForCompare(queryFromURL));
+      if (page === 1 && navMatchesQuery && navData && Array.isArray(navData?.results)) {
+        lastEmbeddingKeyRef.current = embeddingKey;
+        setError("");
+        setLoading(false);
+        // In eval mode we still wait to render until OpenAlex sets are ready.
+        setPendingData(navData);
+        // Don't return sessionStorage here; Home already wrote it.
+      } else {
       lastEmbeddingKeyRef.current = embeddingKey;
       const reqId = ++embeddingReqIdRef.current;
 
@@ -151,6 +189,7 @@ export default function SearchPage() {
           if (reqId !== embeddingReqIdRef.current) return;
           setLoading(false);
         });
+      }
     }
 
     // 2) Raw keyword-only OpenAlex search (eval mode, not paged)
@@ -185,7 +224,7 @@ export default function SearchPage() {
     }
 
     // 3) Gemini+user keywords OpenAlex search (eval mode, not paged)
-    if (SHOW_EVAL && abstracts && abstracts.length && keywords && keywords.length) {
+    if (SHOW_EVAL && abstracts && abstracts.length) {
       const geminiKey = makeKey({ abstracts, keywords, year_min, year_max });
       if (lastGeminiKeyRef.current !== geminiKey) {
         lastGeminiKeyRef.current = geminiKey;
@@ -317,17 +356,6 @@ export default function SearchPage() {
     if (newQuery && typeof newQuery.year_min !== 'undefined') nextQuery.year_min = newQuery.year_min;
     if (newQuery && typeof newQuery.year_max !== 'undefined') nextQuery.year_max = newQuery.year_max;
 
-    // QuerySummary'de gösterilen metni sonuç beklemeden hemen güncelle
-    setQuery(nextQuery);
-
-    // Clear previous results so the UI shows a unified loading state
-    // In eval mode we want to wait for all three result sets before rendering.
-    setPendingData(null);
-    setData(null);
-    setOpenAlexData(null);
-    setOpenAlexGeminiData(null);
-    setError("");
-
     // Build URL params (prefer explicit years from nextQuery, otherwise local inputs)
     const next = new URLSearchParams();
     safeAbstracts.forEach((a) => next.append("abstract", a));
@@ -344,6 +372,26 @@ export default function SearchPage() {
     } else {
       if (yearMax) next.set('year_max', String(yearMax)); else next.delete('year_max');
     }
+
+    // If user clicked Apply without actually changing the query and we're already on page 1,
+    // do NOT clear results (otherwise UI shows "No results" because the effect won't re-run).
+    const currentParams = new URLSearchParams(params);
+    if (currentParams.toString() === next.toString()) {
+      setQuery(nextQuery);
+      return;
+    }
+
+    // QuerySummary'de gösterilen metni sonuç beklemeden hemen güncelle
+    setQuery(nextQuery);
+
+    // Clear previous results so the UI shows a unified loading state
+    // In eval mode we want to wait for all three result sets before rendering.
+    setPendingData(null);
+    setData(null);
+    setOpenAlexData(null);
+    setOpenAlexGeminiData(null);
+    setError("");
+
     setParams(next);
   };
 
@@ -537,7 +585,7 @@ export default function SearchPage() {
       )
       ) : null}
 
-      {SHOW_EVAL && data && openAlexData && (
+      {SHOW_EVAL && data && (
         <EvalFeedback onSubmit={handleEvalSubmit} submitting={evalSubmitting} />
       )}
 

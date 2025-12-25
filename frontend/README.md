@@ -46,6 +46,7 @@ Once the installation is complete, you can start the local development server.
 
 ```bash
 npm run dev
+npm run dev -- --port 5174
 ```
 
 This will start the Vite development server, typically on `http://localhost:5173`. The server features Hot Module Replacement (HMR), so changes you make to the code will be reflected in the browser instantly without a full page reload.

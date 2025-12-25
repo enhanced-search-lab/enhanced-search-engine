@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Jumping Orbits — Flow (Inward) • Clean</title>
+  <style>
+    html, body { margin:0; padding:0; height:100%; background:#061a66; }
+    #wrap { height:100%; display:flex; align-items:center; justify-content:center; }
+    #game{
+      width:min(820px, 96vw);
+      height:min(820px, 96vw);
+      max-height: 92vh;
+      border-radius: 18px;
+      overflow:hidden;
+      box-shadow: 0 24px 70px rgba(0,0,0,.45);
+      border:1px solid rgba(255,255,255,.10);
+      background: #061a66;
+    }
+    .note{
+      position:fixed; left:50%; transform:translateX(-50%);
+      bottom:14px;
+      font: 13px system-ui,-apple-system,Segoe UI,Roboto,Arial;
+      color: rgba(255,255,255,.78);
+      background: rgba(0,0,0,.28);
+      border: 1px solid rgba(255,255,255,.10);
+      padding: 10px 12px; border-radius: 14px;
+      backdrop-filter: blur(10px);
+      max-width: 92vw; text-align:center;
+      user-select:none;
+    }
+    .note b{ color:#fff; }
+  </style>
+</head>
+<body>
+  <div id="wrap"><div id="game"></div></div>
+  <div class="note">
+  <b>Click</b>/<b>Space</b> → Jump Inward • <b>R</b> → Restart
+  </div>
+
+
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+  <script>
+    function lerp(a,b,t){ return a+(b-a)*t; }
+    function rgbToInt(r,g,b){ return (r<<16) | (g<<8) | b; }
+    function hslToRgb(h,s,l){
+      h /= 360;
+      const hue2rgb = (p,q,t)=>{
+        if(t<0) t+=1; if(t>1) t-=1;
+        if(t<1/6) return p+(q-p)*6*t;
+        if(t<1/2) return q;
+        if(t<2/3) return p+(q-p)*(2/3-t)*6;
+        return p;
+      };
+      let r,g,b;
+      if(s===0){ r=g=b=l; }
+      else{
+        const q = l < 0.5 ? l*(1+s) : l+s-l*s;
+        const p = 2*l-q;
+        r = hue2rgb(p,q,h+1/3);
+        g = hue2rgb(p,q,h);
+        b = hue2rgb(p,q,h-1/3);
+      }
+      return [Math.round(r*255),Math.round(g*255),Math.round(b*255)];
+    }
+
+    class FlowScene extends Phaser.Scene {
+      constructor(){ super("Flow"); }
+
+      create(){
+        const w = this.scale.width, h = this.scale.height;
+        this.cx = w/2; this.cy = h/2 + 10;
+
+        // THEME
+        this.themeStep = 0;
+        this.bgRect = this.add.rectangle(w/2,h/2,w,h, 0x061a66).setDepth(-10);
+
+        // UI
+        this.score = 0;
+        this.scoreText = this.add.text(w/2, 18, "Score: 0", {
+          fontFamily:"system-ui,-apple-system,Segoe UI,Roboto,Arial",
+          fontSize:"34px", color:"#fff", fontStyle:"900"
+        }).setOrigin(0.5,0);
+
+        this.hint = this.add.text(w/2, h/2, "Tap / Space to jump inward.\nAvoid red obstacles.", {
+          fontFamily:"system-ui,-apple-system,Segoe UI,Roboto,Arial",
+          fontSize: Math.round(Math.min(w,h)*0.055)+"px",
+          color:"#fff", align:"center", fontStyle:"900"
+        }).setOrigin(0.5);
+
+        // GAME PARAMS
+        this.jumpDuration = 260; // not too fast
+        this.forbidden = 0.30;
+        this.perfectLo = 0.30;
+        this.perfectHi = 0.46;
+
+        // IMPORTANT: safe radius so rings never clip
+        this.ringCount = 7;
+        const margin = Math.max(34, Math.min(w,h)*0.06);   // keeps away from rounded corners
+        this.outerR = Math.min(w,h)/2 - margin;            // fully visible outer radius
+        this.baseR  = this.outerR * 0.18;                  // inner radius
+        this.gapR   = (this.outerR - this.baseR) / (this.ringCount - 1);
+
+        // PLAYER
+        this.player = this.add.circle(0,0, 8, 0xffffff);
+        this.playerHalo = this.add.circle(0,0, 16, 0xffffff, 0.12);
+        this.playerCore = this.add.circle(0,0, 4, 0xffffff, 0.95);
+
+        // DRAW
+        this.gfx = this.add.graphics();
+
+        // RINGS (obstacles are only solid red dots — no glow)
+        this.rings = [];
+        for(let i=0;i<this.ringCount;i++){
+          const r = this.baseR + i*this.gapR;
+          const baseSpeed = 0.58 + i*0.08;
+          this.rings.push(this.makeRing(r, (i%2===0?1:-1)*baseSpeed));
+        }
+
+        // START
+        this.playerRingIndex = this.ringCount - 1;
+        this.playerAngle = -2.35;
+        this.state = "READY"; // READY | ORBIT | JUMP | GAMEOVER
+
+        this.applyTheme();
+        this.redraw();
+        this.placePlayer(true);
+
+        // INPUT
+        this.input.on("pointerdown", ()=>this.tap());
+        this.input.keyboard.on("keydown-SPACE", ()=>this.tap());
+        this.input.keyboard.on("keydown-R", ()=>this.scene.restart());
+
+        // GAME OVER
+        this.gameOverText = this.add.text(w/2, h/2, "", {
+          fontFamily:"system-ui,-apple-system,Segoe UI,Roboto,Arial",
+          fontSize:"30px", color:"#fff", align:"center", fontStyle:"900"
+        }).setOrigin(0.5).setVisible(false);
+
+        // Resize => restart (simple + stable)
+        window.addEventListener("resize", ()=>{
+          this.scale.resize(document.getElementById("game").clientWidth, document.getElementById("game").clientHeight);
+          this.scene.restart();
+        });
+      }
+
+      makeRing(radius, speed){
+        const ring = { r: radius, speed, obstacles: [] };
+        this.spawnObstaclesForRing(ring);
+        return ring;
+      }
+
+      spawnObstaclesForRing(ring){
+        // destroy old obstacles
+        for(const ob of ring.obstacles){ ob.sprite.destroy(); }
+        ring.obstacles = [];
+
+        const t = (ring.r - this.baseR) / (this.gapR*(this.ringCount-1)); // 0..1
+        let count = Math.round(lerp(1, 3, t));
+        if (t < 0.15) count = 1;
+
+        for(let k=0;k<count;k++){
+          let a = Math.random()*Math.PI*2;
+
+          // keep them separated
+          for(let tries=0;tries<12;tries++){
+            let ok = true;
+            for(const other of ring.obstacles){
+              const d = Phaser.Math.Angle.Wrap(a - other.angle);
+              if(Math.abs(d) < 0.80){ ok=false; break; }
+            }
+            if(ok) break;
+            a = Math.random()*Math.PI*2;
+          }
+
+          const dot = this.add.circle(0,0, 6, 0xff3b30, 1);
+          ring.obstacles.push({ angle: a, sprite: dot });
+        }
+      }
+
+      applyTheme(){
+        const hue = (220 + this.themeStep*18) % 360;
+        const ringHue = (hue + 25) % 360;
+        const [br,bg,bb] = hslToRgb(hue, 0.86, 0.26);
+        const [rr,rg,rb] = hslToRgb(ringHue, 0.92, 0.56);
+
+        this.bgColor = rgbToInt(br,bg,bb);
+        this.ringColor = rgbToInt(rr,rg,rb);
+
+        this.bgRect.fillColor = this.bgColor;
+      }
+
+      redraw(){
+        const w = this.scale.width, h = this.scale.height;
+        this.gfx.clear();
+
+        // starfield
+        this.gfx.fillStyle(0xffffff, 0.03);
+        for(let i=0;i<140;i++){
+          const x = (i*79)%w;
+          const y = (i*151)%h;
+          this.gfx.fillCircle(x,y,(i%3===0)?1.3:1.0);
+        }
+
+        // rings (two-pass glow + main)
+        for(let i=0;i<this.rings.length;i++){
+          const ring = this.rings[i];
+          const alpha = 0.14 + i*0.05;
+          const thickness = (i === this.rings.length-1) ? 12 : 8;
+
+          this.gfx.lineStyle(thickness+10, this.ringColor, alpha*0.10);
+          this.gfx.strokeCircle(this.cx, this.cy, ring.r);
+
+          this.gfx.lineStyle(thickness, this.ringColor, alpha);
+          this.gfx.strokeCircle(this.cx, this.cy, ring.r);
+        }
+
+        this.updateObstaclePositions();
+      }
+
+      updateObstaclePositions(){
+        for(const ring of this.rings){
+          for(const ob of ring.obstacles){
+            ob.sprite.x = this.cx + ring.r*Math.cos(ob.angle);
+            ob.sprite.y = this.cy + ring.r*Math.sin(ob.angle);
+          }
+        }
+      }
+
+      placePlayer(init=false){
+        const ring = this.rings[this.playerRingIndex];
+        const x = this.cx + ring.r*Math.cos(this.playerAngle);
+        const y = this.cy + ring.r*Math.sin(this.playerAngle);
+        this.player.setPosition(x,y);
+        this.playerHalo.setPosition(x,y);
+        this.playerCore.setPosition(x,y);
+        if (init) return;
+      }
+
+      tap(){
+        if(this.state === "GAMEOVER"){ this.scene.restart(); return; }
+
+        if(this.state === "READY"){
+          this.state = "ORBIT";
+          this.tweens.add({ targets:this.hint, alpha:0, duration:240, onComplete:()=>this.hint.setVisible(false) });
+        }
+        if(this.state !== "ORBIT") return;
+
+        const next = this.playerRingIndex - 1;
+        this.state = "JUMP";
+
+        const fromRing = this.rings[this.playerRingIndex];
+        const toRing   = this.rings[next];
+        const angle    = this.playerAngle;
+
+        let hit=false;
+        let closestAbs=Infinity;
+        for(const ob of toRing.obstacles){
+          const d = Phaser.Math.Angle.Wrap(angle - ob.angle);
+          const ad = Math.abs(d);
+          closestAbs = Math.min(closestAbs, ad);
+          if(ad < this.forbidden) hit=true;
+        }
+        const perfect = (!hit && closestAbs >= this.perfectLo && closestAbs <= this.perfectHi);
+
+        const tweenObj = { t:0 };
+        this.tweens.add({
+          targets:tweenObj,
+          t:1,
+          duration:this.jumpDuration,
+          ease:"Sine.easeInOut",
+          onUpdate:()=>{
+            const r = Phaser.Math.Linear(fromRing.r, toRing.r, tweenObj.t);
+            const x = this.cx + r*Math.cos(angle);
+            const y = this.cy + r*Math.sin(angle);
+            this.player.setPosition(x,y);
+            this.playerHalo.setPosition(x,y);
+            this.playerCore.setPosition(x,y);
+          },
+          onComplete:()=>{
+            if(hit){ this.die(); return; }
+
+            this.playerRingIndex = next;
+            this.score += perfect ? 2 : 1;
+            this.scoreText.setText("Score: " + this.score);
+
+            if(this.playerRingIndex === 0){
+              this.shiftRingsInward();
+            }
+
+            this.state = "ORBIT";
+          }
+        });
+      }
+
+      shiftRingsInward(){
+        // theme change
+        this.themeStep++;
+        this.applyTheme();
+
+        // remove outer ring (and its obstacles)
+        const removed = this.rings.pop();
+        for(const ob of removed.obstacles){ ob.sprite.destroy(); }
+
+        // add new inner ring (same mechanics)
+        const currentInner = this.rings[0].r;
+        const newInnerR = Math.max(24, currentInner - this.gapR);
+        const baseSpeed = 0.55;
+        const dir = (this.themeStep % 2 === 0) ? 1 : -1;
+        const newRing = this.makeRing(newInnerR, dir * baseSpeed);
+        this.rings.unshift(newRing);
+
+        // normalize radii with SAFE outer radius (so it never clips)
+        for(let i=0;i<this.rings.length;i++){
+          this.rings[i].r = this.baseR + i*this.gapR;
+          const speedBoost = 1 + Math.min(0.45, this.themeStep*0.03);
+          const base = 0.58 + i*0.08;
+          this.rings[i].speed = (i%2===0?1:-1) * base * speedBoost;
+        }
+
+        // respawn obstacles (clean)
+        for(const ring of this.rings) this.spawnObstaclesForRing(ring);
+
+        // keep your original behavior: return to outer ring
+        this.playerRingIndex = this.rings.length - 1;
+        this.placePlayer(true);
+
+        this.redraw();
+      }
+
+      die(){
+        this.state = "GAMEOVER";
+
+        const boom = this.add.circle(this.player.x, this.player.y, 10, 0xffffff, 0.85);
+        this.tweens.add({
+          targets:boom,
+          radius: 80,
+          alpha: 0,
+          duration: 300,
+          ease:"Sine.easeOut",
+          onComplete:()=>boom.destroy()
+        });
+
+        this.player.setVisible(false);
+        this.playerHalo.setVisible(false);
+        this.playerCore.setVisible(false);
+
+        this.gameOverText.setText(`Game Over\nScore: ${this.score}\n\nTap / R to restart`);
+        this.gameOverText.setVisible(true);
+      }
+
+      update(time, delta){
+        const dt = delta/1000;
+
+        // rotate obstacles
+        for(const ring of this.rings){
+          for(const ob of ring.obstacles){
+            ob.angle = Phaser.Math.Angle.Wrap(ob.angle + ring.speed*dt);
+          }
+        }
+        this.updateObstaclePositions();
+
+        // rotate player
+        if(this.state === "ORBIT"){
+          const ring = this.rings[this.playerRingIndex];
+          this.playerAngle = Phaser.Math.Angle.Wrap(this.playerAngle + ring.speed*dt);
+          this.placePlayer();
+        }
+
+        // subtle halo pulse
+        if(this.state !== "GAMEOVER"){
+          this.playerHalo.setAlpha(0.10 + 0.04*Math.sin(time/180));
+        }
+      }
+    }
+
+    const parent = document.getElementById("game");
+    new Phaser.Game({
+      type: Phaser.AUTO,
+      parent: "game",
+      width: parent.clientWidth,
+      height: parent.clientHeight,
+      backgroundColor: "#061a66",
+      scene: [FlowScene],
+      scale: { mode: Phaser.Scale.NONE }
+    });
+  </script>
+</body>
+</html>

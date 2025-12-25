@@ -1,12 +1,14 @@
 import React, { useEffect } from "react";
 
 export default function GameModal({ open, onClose, loading = false }) {
+  const isDev = !!(import.meta?.env && import.meta.env.DEV);
+
   useEffect(() => {
-    if (open) console.log("GameModal: opened, loading=", loading);
+    if (isDev && open) console.log("GameModal: opened, loading=", loading);
     return () => {
-      if (open) console.log("GameModal: closed");
+      if (isDev && open) console.log("GameModal: closed");
     };
-  }, [open]);
+  }, [open, loading, isDev]);
 
   if (!open) return null;
 
@@ -14,7 +16,9 @@ export default function GameModal({ open, onClose, loading = false }) {
   // doesn't get clipped. Leave a small margin from the viewport edges.
   const maxSize = 820; // the game's base target
   const margin = 80;
-  const size = Math.min(window.innerWidth - margin, window.innerHeight - margin, maxSize);
+  const vw = typeof window !== "undefined" ? window.innerWidth : 1024;
+  const vh = typeof window !== "undefined" ? window.innerHeight : 768;
+  const size = Math.max(320, Math.min(vw - margin, vh - margin, maxSize));
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center" }}>

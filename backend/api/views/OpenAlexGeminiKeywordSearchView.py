@@ -88,7 +88,7 @@ class OpenAlexGeminiKeywordSearchView(APIView):
         user_kw_tokens = [str(k).strip() for k in keywords if str(k).strip()]
         print(f"!! [GEMINI PIPELINE] User kw tokens: {user_kw_tokens}")
 
-    # 3) LLM phrases + kullanıcı keyword'lerini birleştir ve case-insensitive tekilleştir  !!
+        # 3) LLM phrases + kullanıcı keyword'lerini birleştir ve case-insensitive tekilleştir  !!
         temp_tokens = all_llm_tokens + user_kw_tokens
         seen_keys = set()
         combined_tokens = []
