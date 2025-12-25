@@ -290,7 +290,7 @@ export default function SearchPage() {
   };
 
   const handleEvalSubmit = async ({ choice, comment }) => {
-    if (!SHOW_EVAL || !data || !openAlexData) return;
+    if (!SHOW_EVAL || !data) return;
     setEvalSubmitting(true);
     try {
       // Map normalized choice (left/middle/right) to actual pipeline label
@@ -298,15 +298,23 @@ export default function SearchPage() {
       if (choice === "left") chosen_setup = layout.left;
       else if (choice === "middle") chosen_setup = layout.middle;
       else if (choice === "right") chosen_setup = layout.right;
+
+      // Her slotun hangi pipeline'a denk geldiğini ve hangi sonuçları gösterdiğini feedback'e ekle
+      const slotResults = {
+        embedding: (data?.results || []).slice(0, 20),
+        raw_openalex: (openAlexData?.results || []).slice(0, 20),
+        gemini_openalex: (openAlexGeminiData?.results || []).slice(0, 20),
+      };
       const payload = {
         query,
         choice,
         comment,
         layout,
         chosen_setup,
-        // basitçe iki listenin ilk birkaç ID'sini de ekleyelim (opsiyonel, backend için faydalı olabilir)
-        left_ids: (data.results || []).slice(0, 50).map((p) => p.id),
-        right_ids: (openAlexData.results || []).slice(0, 50).map((p) => p.id),
+        slotResults,
+        left_ids: slotResults[layout.left]?.map((p) => p.id) || [],
+        middle_ids: slotResults[layout.middle]?.map((p) => p.id) || [],
+        right_ids: slotResults[layout.right]?.map((p) => p.id) || [],
       };
 
       // Construct the persisted-like object to return to the caller so the UI can
@@ -317,6 +325,7 @@ export default function SearchPage() {
         comment: payload.comment,
         layout: payload.layout,
         chosen_setup: payload.chosen_setup,
+        slotResults: payload.slotResults,
         ts: new Date().toISOString(),
       };
 
