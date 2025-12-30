@@ -545,10 +545,10 @@ export default function SearchPage() {
             <SearchResultsList
               results={
                 layout.left === "embedding"
-                  ? (data?.results || []).slice(0, 20)
+                  ? (data?.results || []).slice(0, 15)
                   : layout.left === "raw_openalex"
-                  ? (openAlexData?.results || []).slice(0, 20)
-                  : (openAlexGeminiData?.results || []).slice(0, 20)
+                  ? (openAlexData?.results || []).slice(0, 15)
+                  : (openAlexGeminiData?.results || []).slice(0, 15)
               }
               loading={false}
               error={error}
@@ -562,10 +562,10 @@ export default function SearchPage() {
             <SearchResultsList
               results={
                 layout.middle === "embedding"
-                  ? (data?.results || []).slice(0, 20)
+                  ? (data?.results || []).slice(0, 15)
                   : layout.middle === "raw_openalex"
-                  ? (openAlexData?.results || []).slice(0, 20)
-                  : (openAlexGeminiData?.results || []).slice(0, 20)
+                  ? (openAlexData?.results || []).slice(0, 15)
+                  : (openAlexGeminiData?.results || []).slice(0, 15)
               }
               loading={false}
               error={error}
@@ -579,10 +579,10 @@ export default function SearchPage() {
             <SearchResultsList
               results={
                 layout.right === "embedding"
-                  ? (data?.results || []).slice(0, 20)
+                  ? (data?.results || []).slice(0, 15)
                   : layout.right === "raw_openalex"
-                  ? (openAlexData?.results || []).slice(0, 20)
-                  : (openAlexGeminiData?.results || []).slice(0, 20)
+                  ? (openAlexData?.results || []).slice(0, 15)
+                  : (openAlexGeminiData?.results || []).slice(0, 15)
               }
               loading={false}
               error={error}
