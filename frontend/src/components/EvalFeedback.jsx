@@ -93,75 +93,36 @@ export default function EvalFeedback({ onSubmit }) {
       </div>
 
       <div className="flex w-full justify-between mt-8">
-        <div className="flex-1 flex justify-center">
-          <div>
-            {(() => {
-              const col = "left";
-              const rank = ranking.indexOf(col);
-              return (
+        {["left", "middle", "right"].map((col) => {
+          const rank = ranking.indexOf(col);
+          let bgColor = "bg-indigo-400 hover:bg-indigo-500";
+          let text = "Select";
+          if (rank === 0) {
+            bgColor = "bg-yellow-200 text-yellow-800 hover:bg-yellow-300"; // Matte gold for 1st
+            text = "1. Selected";
+          } else if (rank === 1) {
+            bgColor = "bg-gray-200 text-gray-800 hover:bg-gray-300"; // Matte silver for 2nd
+            text = "2. Selected";
+          } else if (rank === 2) {
+            bgColor = "bg-orange-200 text-orange-800 hover:bg-orange-300"; // Matte bronze for 3rd
+            text = "3. Selected";
+          }
+          return (
+            <div className="flex-1 flex justify-center" key={col}>
+              <div>
                 <button
-                  key={col}
                   type="button"
                   onClick={() => handleSelect(col)}
-                  className={`rounded-full px-8 py-4 font-semibold text-white text-lg transition focus:outline-none ${
-                    rank !== -1
-                      ? "bg-indigo-600"
-                      : "bg-indigo-400 hover:bg-indigo-500"
-                  }`}
+                  className={`rounded-full px-8 py-4 font-semibold text-lg transition focus:outline-none ${bgColor}`}
                   aria-pressed={rank !== -1}
+                  disabled={submitted}
                 >
-                  {rank !== -1 ? `${rank + 1}. Selected` : `Select`}
+                  {text}
                 </button>
-              );
-            })()}
-          </div>
-        </div>
-        <div className="flex-1 flex justify-center">
-          <div>
-            {(() => {
-              const col = "middle";
-              const rank = ranking.indexOf(col);
-              return (
-                <button
-                  key={col}
-                  type="button"
-                  onClick={() => handleSelect(col)}
-                  className={`rounded-full px-8 py-4 font-semibold text-white text-lg transition focus:outline-none ${
-                    rank !== -1
-                      ? "bg-indigo-600"
-                      : "bg-indigo-400 hover:bg-indigo-500"
-                  }`}
-                  aria-pressed={rank !== -1}
-                >
-                  {rank !== -1 ? `${rank + 1}. Selected` : `Select`}
-                </button>
-              );
-            })()}
-          </div>
-        </div>
-        <div className="flex-1 flex justify-center">
-          <div>
-            {(() => {
-              const col = "right";
-              const rank = ranking.indexOf(col);
-              return (
-                <button
-                  key={col}
-                  type="button"
-                  onClick={() => handleSelect(col)}
-                  className={`rounded-full px-8 py-4 font-semibold text-white text-lg transition focus:outline-none ${
-                    rank !== -1
-                      ? "bg-indigo-600"
-                      : "bg-indigo-400 hover:bg-indigo-500"
-                  }`}
-                  aria-pressed={rank !== -1}
-                >
-                  {rank !== -1 ? `${rank + 1}. Selected` : `Select`}
-                </button>
-              );
-            })()}
-          </div>
-        </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {submitted && savedResult && (

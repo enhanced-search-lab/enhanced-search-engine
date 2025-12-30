@@ -95,7 +95,7 @@
         }).setOrigin(1,0).setAlpha(0.92);
         this.bestText.setShadow(0, 6, "rgba(0,0,0,.35)", 10, false, true);
 
-        this.hint = this.add.text(w/2, h/2, "Tap / Space to jump inward.\nAvoid red obstacles.", {
+        this.hint = this.add.text(w/2, h/2, "Click / Space to jump inward.\nAvoid red obstacles.", {
           fontFamily:"system-ui,-apple-system,Segoe UI,Roboto,Arial",
           fontSize: Math.round(Math.min(w,h)*0.055)+"px",
           color:"#fff", align:"center", fontStyle:"900"
@@ -466,7 +466,7 @@
         this.playerHalo.setVisible(false);
         this.playerCore.setVisible(false);
 
-        this.gameOverText.setText(`Game Over\nScore: ${this.score}\nBest: ${this.bestScore}\n\nTap / R to restart`);
+        this.gameOverText.setText(`Game Over\nScore: ${this.score}\nBest: ${this.bestScore}\n\nClick / R to restart`);
         this.gameOverText.setVisible(true);
       }
 

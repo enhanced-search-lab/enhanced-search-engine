@@ -454,20 +454,37 @@ export default function SearchPage() {
 
   // Any in-progress request across embedding/OpenAlex/Gemini
   const anyLoading = loading || loadingOpenAlex || loadingGemini;
+
+  // Only show game modal if not just navigated from Home (i.e., location.state is not present)
   const [gameDismissed, setGameDismissed] = useState(false);
   const prevAnyLoadingRef = useRef(false);
+  const justArrivedFromHome = !!location.state;
 
-  // When loading begins (transition false -> true), reset dismissed state so modal can show
   useEffect(() => {
-    if (anyLoading && !prevAnyLoadingRef.current) {
+    if (anyLoading && !prevAnyLoadingRef.current && !justArrivedFromHome) {
       setGameDismissed(false);
     }
     prevAnyLoadingRef.current = anyLoading;
-  }, [anyLoading]);
+  }, [anyLoading, justArrivedFromHome]);
+
+  // Progress bar stages for GameModal
+  const loadingStages = [
+    { label: 'Embedding', done: !loading },
+    SHOW_EVAL && (queryFromURL.keywords || []).length > 0 ? { label: 'OpenAlex', done: !loadingOpenAlex } : null,
+    SHOW_EVAL && (queryFromURL.abstracts || []).length > 0 && (queryFromURL.keywords || []).length > 0 ? { label: 'LLM', done: !loadingGemini } : null,
+  ].filter(Boolean);
 
   return (
     <div style={{display:"grid", gap:24}}>
-      <GameModal open={anyLoading && !allReady && !gameDismissed} onClose={() => setGameDismissed(true)} loading={anyLoading && !allReady} />
+      {/* Only show GameModal if not just arrived from Home (prevents double modal) */}
+      {!justArrivedFromHome && (
+        <GameModal
+          open={anyLoading && !allReady && !gameDismissed}
+          onClose={() => setGameDismissed(true)}
+          loading={anyLoading && !allReady}
+          loadingStages={loadingStages}
+        />
+      )}
       <QuerySummary
         query={query}
         // Eval modu açıkken global sonuç sayısını gizle, ama similarity metnini göstermeye devam et
