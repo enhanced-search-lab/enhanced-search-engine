@@ -289,42 +289,41 @@ export default function SearchPage() {
     setParams(next);
   };
 
-  const handleEvalSubmit = async ({ choice, comment }) => {
+  // Updated: Accepts { ranking, comment } and sends a fully JSON-compliant payload to backend
+  const handleEvalSubmit = async ({ ranking, comment }) => {
     if (!SHOW_EVAL || !data) return;
     setEvalSubmitting(true);
     try {
-      // Map normalized choice (left/middle/right) to actual pipeline label
-      let chosen_setup = null;
-      if (choice === "left") chosen_setup = layout.left;
-      else if (choice === "middle") chosen_setup = layout.middle;
-      else if (choice === "right") chosen_setup = layout.right;
+      // Map ranking (e.g. ["left", "middle", "right"]) to actual pipeline labels
+      const ranking_labels = ranking.map((col) => layout[col]);
 
-      // Her slotun hangi pipeline'a denk geldiğini ve hangi sonuçları gösterdiğini feedback'e ekle
+      // Each slot's results (for traceability)
       const slotResults = {
         embedding: (data?.results || []).slice(0, 20),
         raw_openalex: (openAlexData?.results || []).slice(0, 20),
         gemini_openalex: (openAlexGeminiData?.results || []).slice(0, 20),
       };
+
+      // JSON-compliant feedback payload
       const payload = {
         query,
-        choice,
+        ranking, // e.g. ["left", "middle", "right"]
+        ranking_labels, // e.g. ["embedding", "raw_openalex", "gemini_openalex"]
         comment,
-        layout,
-        chosen_setup,
+        layout, // { left, middle, right }
         slotResults,
         left_ids: slotResults[layout.left]?.map((p) => p.id) || [],
         middle_ids: slotResults[layout.middle]?.map((p) => p.id) || [],
         right_ids: slotResults[layout.right]?.map((p) => p.id) || [],
       };
 
-      // Construct the persisted-like object to return to the caller so the UI can
-      // immediately show what was recorded. We include a local timestamp.
+      // Persisted object for UI
       const persisted = {
         query: payload.query,
-        choice: payload.choice,
+        ranking: payload.ranking,
+        ranking_labels: payload.ranking_labels,
         comment: payload.comment,
         layout: payload.layout,
-        chosen_setup: payload.chosen_setup,
         slotResults: payload.slotResults,
         ts: new Date().toISOString(),
       };
@@ -333,14 +332,13 @@ export default function SearchPage() {
       return persisted;
     } catch (e) {
       console.warn("Eval feedback send failed", e);
-      // Even if sending failed, return a local persisted object so the UI can
-      // show immediate feedback to the user.
+      // Even if sending failed, return a local persisted object so the UI can show immediate feedback
       return {
         query,
-        choice,
+        ranking,
+        ranking_labels: ranking.map((col) => layout[col]),
         comment,
         layout,
-        chosen_setup: choice === "left" ? layout.left : choice === "middle" ? layout.middle : layout.right,
         ts: new Date().toISOString(),
       };
     } finally {
@@ -533,70 +531,72 @@ export default function SearchPage() {
       )}
 
 
+
     {SHOW_EVAL ? (
       !allReady ? (
         <div style={{ padding: 24, textAlign: "center", color: "#6b7280" }}>
           Loading all result sets…
         </div>
       ) : (
-        <div className="grid gap-y-8 gap-x-4 md:grid-cols-3">
-          {/* Left column */}
-          <div>
-            <SearchResultsList
-              results={
-                layout.left === "embedding"
-                  ? (data?.results || []).slice(0, 15)
-                  : layout.left === "raw_openalex"
-                  ? (openAlexData?.results || []).slice(0, 15)
-                  : (openAlexGeminiData?.results || []).slice(0, 15)
-              }
-              loading={false}
-              error={error}
-              hideSimilarity={SHOW_EVAL}
-              compact={SHOW_EVAL}
-            />
-          </div>
+        <>
+          {data && (
+            <EvalFeedback onSubmit={handleEvalSubmit} submitting={evalSubmitting} />
+          )}
+          <div className="grid gap-y-8 gap-x-4 md:grid-cols-3">
+            {/* Left column */}
+            <div>
+              <SearchResultsList
+                results={
+                  layout.left === "embedding"
+                    ? (data?.results || []).slice(0, 15)
+                    : layout.left === "raw_openalex"
+                    ? (openAlexData?.results || []).slice(0, 15)
+                    : (openAlexGeminiData?.results || []).slice(0, 15)
+                }
+                loading={false}
+                error={error}
+                hideSimilarity={SHOW_EVAL}
+                compact={SHOW_EVAL}
+              />
+            </div>
 
-          {/* Middle column */}
-          <div>
-            <SearchResultsList
-              results={
-                layout.middle === "embedding"
-                  ? (data?.results || []).slice(0, 15)
-                  : layout.middle === "raw_openalex"
-                  ? (openAlexData?.results || []).slice(0, 15)
-                  : (openAlexGeminiData?.results || []).slice(0, 15)
-              }
-              loading={false}
-              error={error}
-              hideSimilarity={SHOW_EVAL}
-              compact={SHOW_EVAL}
-            />
-          </div>
+            {/* Middle column */}
+            <div>
+              <SearchResultsList
+                results={
+                  layout.middle === "embedding"
+                    ? (data?.results || []).slice(0, 15)
+                    : layout.middle === "raw_openalex"
+                    ? (openAlexData?.results || []).slice(0, 15)
+                    : (openAlexGeminiData?.results || []).slice(0, 15)
+                }
+                loading={false}
+                error={error}
+                hideSimilarity={SHOW_EVAL}
+                compact={SHOW_EVAL}
+              />
+            </div>
 
-          {/* Right column */}
-          <div>
-            <SearchResultsList
-              results={
-                layout.right === "embedding"
-                  ? (data?.results || []).slice(0, 15)
-                  : layout.right === "raw_openalex"
-                  ? (openAlexData?.results || []).slice(0, 15)
-                  : (openAlexGeminiData?.results || []).slice(0, 15)
-              }
-              loading={false}
-              error={error}
-              hideSimilarity={SHOW_EVAL}
-              compact={SHOW_EVAL}
-            />
+            {/* Right column */}
+            <div>
+              <SearchResultsList
+                results={
+                  layout.right === "embedding"
+                    ? (data?.results || []).slice(0, 15)
+                    : layout.right === "raw_openalex"
+                    ? (openAlexData?.results || []).slice(0, 15)
+                    : (openAlexGeminiData?.results || []).slice(0, 15)
+                }
+                loading={false}
+                error={error}
+                hideSimilarity={SHOW_EVAL}
+                compact={SHOW_EVAL}
+              />
+            </div>
           </div>
-        </div>
+        </>
       )
-      ) : null}
-
-      {SHOW_EVAL && data && (
-        <EvalFeedback onSubmit={handleEvalSubmit} submitting={evalSubmitting} />
-      )}
+    ) : null}
 
       {data && (
         <div style={{marginTop:8, display:"flex", gap:12}}>

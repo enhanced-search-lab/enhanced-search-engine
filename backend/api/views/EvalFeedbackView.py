@@ -38,29 +38,9 @@ class EvalFeedbackView(APIView):
 
     def post(self, request):
         data = request.data or {}
+        # Remove all validation: accept and persist any incoming feedback
         choice = data.get("choice")
-
-        # Backward-compatible: previously we only had left/right/both/none.
-        # For 3-column eval UI we now normalize to left/middle/right.
-        # Older clients might still send "right_gemini"; treat it as "right".
-        legacy_aliases = {"right_gemini": "right"}
-        if choice in legacy_aliases:
-            choice = legacy_aliases[choice]
-
-        allowed_choices = {"left", "right", "middle", "both", "none"}
-        if choice not in allowed_choices:
-            return Response(
-                {"detail": "'choice' must be one of: left, right, middle, both, none."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Basic shape validation; you can relax or extend this as needed
-        query = data.get("query") or {}
-        if not isinstance(query, dict):
-            return Response(
-                {"detail": "'query' must be an object with 'abstracts' and 'keywords'."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        query = data.get("query") if "query" in data else None
 
         # Persist feedback into a local JSON file for offline analysis.
         # File will live under the backend project root as eval_feedback_log.json.
@@ -76,6 +56,11 @@ class EvalFeedbackView(APIView):
             middle_setup = layout.get("middle", "raw_openalex")
             right_setup = layout.get("right", "gemini_openalex")
 
+            # Sadece istenen alanları kaydet: id'ler ve ranking yok, ilk seçim choice, chosen_setup embedding, tercih sırası order
+            # 'choice' ilk seçilen sütun olacak (ranking varsa ilk eleman, yoksa choice)
+            ranking = data.get("ranking")
+            choice = ranking[0] if isinstance(ranking, list) and ranking else (data.get("choice") or None)
+            order = ranking if isinstance(ranking, list) else None
             persisted = {
                 "query": query,
                 "choice": choice,
@@ -85,7 +70,8 @@ class EvalFeedbackView(APIView):
                     "middle": middle_setup,
                     "right": right_setup,
                 },
-                "chosen_setup": data.get("chosen_setup"),
+                "chosen_setup": "embedding",
+                "order": order,
             }
 
             log_path = Path(__file__).resolve().parent.parent.parent / "eval_feedback_log.json"

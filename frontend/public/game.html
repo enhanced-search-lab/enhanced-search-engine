@@ -74,12 +74,26 @@
         this.themeStep = 0;
         this.bgRect = this.add.rectangle(w/2,h/2,w,h, 0x061a66).setDepth(-10);
 
+        // BEST SCORE (persist)
+        this.bestScore = Number(localStorage.getItem("jo_best_score") || "0");
+
         // UI
         this.score = 0;
         this.scoreText = this.add.text(w/2, 18, "Score: 0", {
           fontFamily:"system-ui,-apple-system,Segoe UI,Roboto,Arial",
           fontSize:"34px", color:"#fff", fontStyle:"900"
         }).setOrigin(0.5,0);
+
+        // Best score (top-right) — nicer pill
+        this.bestText = this.add.text(w - 18, 22, "BEST  " + this.bestScore, {
+          fontFamily:"system-ui,-apple-system,Segoe UI,Roboto,Arial",
+          fontSize:"14px",
+          color:"#ffffff",
+          fontStyle:"900",
+          backgroundColor:"rgba(0,0,0,.28)",
+          padding:{ left:12, right:12, top:8, bottom:8 }
+        }).setOrigin(1,0).setAlpha(0.92);
+        this.bestText.setShadow(0, 6, "rgba(0,0,0,.35)", 10, false, true);
 
         this.hint = this.add.text(w/2, h/2, "Tap / Space to jump inward.\nAvoid red obstacles.", {
           fontFamily:"system-ui,-apple-system,Segoe UI,Roboto,Arial",
@@ -90,14 +104,15 @@
         // GAME PARAMS
         this.jumpDuration = 260;
 
-        // PERFECT window (radians)
-        this.perfectLo = 0.30;
-        this.perfectHi = 0.46;
-
         // === REALISTIC COLLISION (pixel-based) ===
         this.playerRadius = 8;
         this.obstacleRadius = 6;
         this.collisionPad = 1.5;
+
+        // PERFECT proximity window (pixels above collision threshold)
+        // "çarpmıyor ama çok yakın" => perfect
+        this.perfectNearLo = 2;   // thresh + 2px
+        this.perfectNearHi = 16;  // thresh + 16px
 
         // SAFE radii
         this.ringCount = 7;
@@ -132,7 +147,26 @@
         this.playerAngle = -2.35;
         this.state = "READY"; // READY | ORBIT | JUMP | GAMEOVER
 
-        this.activeJump = null; // { fromRing, toRing, angle, prevR, crossed, closestAng, hit, done, nextIndex }
+        this.activeJump = null; // { ..., closestChord }
+
+        // BONUS POPUP helper (shows +2 PERFECT)
+        this.showBonus = (x, y, text) => {
+          const t = this.add.text(x, y, text, {
+            fontFamily:"system-ui,-apple-system,Segoe UI,Roboto,Arial",
+            fontSize:"22px",
+            color:"#ffd166",
+            fontStyle:"900"
+          }).setOrigin(0.5);
+
+          this.tweens.add({
+            targets: t,
+            y: y - 26,
+            alpha: 0,
+            duration: 320,
+            ease: "Cubic.easeOut",
+            onComplete: () => t.destroy()
+          });
+        };
 
         this.applyTheme();
         this.redraw();
@@ -166,7 +200,7 @@
         for(const ob of ring.obstacles){ ob.sprite.destroy(); }
         ring.obstacles = [];
 
-        // İstediğin: 3,4,5. halkalarda 2 top (idx 2,3,4)
+        // 3,4,5. halkalarda 2 top (idx 2,3,4)
         const specialTwoOpposite = (ring.idx === 2 || ring.idx === 3 || ring.idx === 4);
 
         let count;
@@ -178,10 +212,9 @@
           if (t < 0.15) count = 1;
         }
 
-        // içe doğru hız bonusu (en içtekiler daha hızlı)
-        // idx 0 en iç, idx ringCount-1 en dış
-        const innerT = 1 - (ring.idx / (this.ringCount - 1)); // 1 (inner) -> 0 (outer)
-        const innerBoost = 1 + 0.55 * innerT;                 // inner ~1.55x, outer ~1.0x
+        // inner boost: inner faster
+        const innerT = 1 - (ring.idx / (this.ringCount - 1)); // 1 inner -> 0 outer
+        const innerBoost = 1 + 0.55 * innerT;                 // inner ~1.55x
 
         for(let k=0;k<count;k++){
           let a = Math.random()*Math.PI*2;
@@ -199,8 +232,6 @@
           const dot = this.add.circle(0,0, this.obstacleRadius, 0xff3b30, 1);
 
           let spd = ring.obstacleSpeed * innerBoost;
-
-          // özel halkalarda 2 top: zıt yön
           if(specialTwoOpposite){
             spd = (k === 0) ? (ring.obstacleSpeed * innerBoost) : (-ring.obstacleSpeed * innerBoost);
           }
@@ -294,7 +325,7 @@
           angle,
           prevR: rNow,
           crossed: false,
-          closestAng: Infinity,
+          closestChord: Infinity, // <-- for PERFECT proximity
           hit: false,
           done: false,
           nextIndex: next
@@ -330,11 +361,38 @@
 
         this.playerRingIndex = aj.nextIndex;
 
-        const closest = (aj.closestAng !== Infinity) ? aj.closestAng : Infinity;
-        const perfect = (closest !== Infinity && closest >= this.perfectLo && closest <= this.perfectHi);
+        // PERFECT = "çarpmadı ama çok yakın geçti"
+        const thresh = this.playerRadius + this.obstacleRadius + this.collisionPad;
+        const perfect = (aj.closestChord !== Infinity &&
+                         aj.closestChord >  thresh &&
+                         aj.closestChord <= (thresh + this.perfectNearHi) &&
+                         aj.closestChord >= (thresh + this.perfectNearLo));
 
-        this.score += perfect ? 2 : 1;
+        if(perfect){
+          this.score += 2;
+          this.showBonus(this.player.x, this.player.y - 18, "+2 PERFECT");
+        } else {
+          this.score += 1;
+        }
+
         this.scoreText.setText("Score: " + this.score);
+
+        // best score update
+        if(this.score > this.bestScore){
+          this.bestScore = this.score;
+          localStorage.setItem("jo_best_score", String(this.bestScore));
+          this.bestText.setText("BEST  " + this.bestScore);
+
+          // tiny "ping" feel without changing anything else
+          this.tweens.add({
+            targets: this.bestText,
+            scaleX: 1.08,
+            scaleY: 1.08,
+            yoyo: true,
+            duration: 120,
+            ease: "Sine.easeOut"
+          });
+        }
 
         if(this.playerRingIndex === 0){
           this.shiftRingsInward();
@@ -384,6 +442,13 @@
       }
 
       die(){
+        // best update on death too
+        if(this.score > this.bestScore){
+          this.bestScore = this.score;
+          localStorage.setItem("jo_best_score", String(this.bestScore));
+          this.bestText.setText("BEST  " + this.bestScore);
+        }
+
         this.state = "GAMEOVER";
         this.activeJump = null;
 
@@ -401,7 +466,7 @@
         this.playerHalo.setVisible(false);
         this.playerCore.setVisible(false);
 
-        this.gameOverText.setText(`Game Over\nScore: ${this.score}\n\nTap / R to restart`);
+        this.gameOverText.setText(`Game Over\nScore: ${this.score}\nBest: ${this.bestScore}\n\nTap / R to restart`);
         this.gameOverText.setVisible(true);
       }
 
@@ -434,9 +499,12 @@
               const d = Phaser.Math.Angle.Wrap(aj.angle - ob.angle);
               const ad = Math.abs(d);
 
-              if(ad < aj.closestAng) aj.closestAng = ad;
-
               const chord = 2 * R * Math.sin(ad / 2);
+
+              // closest approach (for PERFECT proximity)
+              if(chord < aj.closestChord) aj.closestChord = chord;
+
+              // actual collision
               if(chord <= thresh){
                 aj.hit = true;
                 break;
@@ -452,7 +520,7 @@
           this.finalizeJump();
         }
 
-        // ORBIT: rotate player and check same-ring collision
+        // ORBIT: rotate player + same ring collision
         if(this.state === "ORBIT"){
           const ring = this.rings[this.playerRingIndex];
           this.playerAngle = Phaser.Math.Angle.Wrap(this.playerAngle + ring.playerSpeed*dt);
