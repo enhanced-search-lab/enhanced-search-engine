@@ -38,7 +38,6 @@ const Header = () => {
                             <Link to="/" className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">Proxima</Link>
                         </div>
                         <nav className="hidden md:flex space-x-8 items-center">
-                            <a href="/#statistics" className="text-gray-700 hover:text-purple-600 font-medium transition-colors">Database</a>
                             <a href="/#contact" className="text-gray-700 hover:text-purple-600 font-medium transition-colors">Contact</a>
                             {/* language selector removed (no translations available) */}
                         </nav>
@@ -57,7 +56,6 @@ const Header = () => {
             <div id="mobileMenu" className={`fixed inset-0 bg-white z-40 transform transition-transform duration-300 md:hidden ${isMenuOpen ? '' : 'translate-x-full'}`}>
                 <div className="pt-24 px-6">
                     <nav className="space-y-6">
-                        <a href="/#statistics" onClick={toggleMenu} className="block text-2xl font-medium text-gray-700 hover:text-purple-600 transition-colors">Database</a>
                         <a href="/#contact" onClick={toggleMenu} className="block text-2xl font-medium text-gray-700 hover:text-purple-600 transition-colors">Contact</a>
                         {/* language selector removed from mobile menu */}
                     </nav>

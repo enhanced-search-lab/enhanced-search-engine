@@ -1,11 +1,9 @@
 import React, { useState } from "react";
 import EditQueryModal from "./modals/EditQueryModal";
-import SubscribeModal from "./modals/SubscribeModal";
 
 // hideSimilarity: evaluation modunda, similarity/embedding ile ilgili metni gizlemek için opsiyonel flag
-export default function QuerySummary({ query, resultCount, summary, onQueryUpdate, hideSimilarity = false }) {
+export default function QuerySummary({ query, resultCount, summary, onQueryUpdate, onSubscribeClick, hideSimilarity = false }) {
   const [isEditModalOpen, setEditModalOpen] = useState(false);
-  const [isSubscribeModalOpen, setSubscribeModalOpen] = useState(false);
   const [expandedAbstracts, setExpandedAbstracts] = useState([]); // hangi abstract'lar tam açık
   const [keywordsExpanded, setKeywordsExpanded] = useState(false);
 
@@ -18,7 +16,6 @@ export default function QuerySummary({ query, resultCount, summary, onQueryUpdat
   const end = Math.min(safeCount, page * per);
 
   const handleQueryUpdate = (newQuery) => {
-    console.log("QuerySummary.handleQueryUpdate ->", newQuery);
     onQueryUpdate(newQuery);
     setEditModalOpen(false);
   };
@@ -28,7 +25,7 @@ export default function QuerySummary({ query, resultCount, summary, onQueryUpdat
       <section className="results-head">
         <div className="head-actions">
           <button className="btn-ghost" title="Edit abstracts & keywords" onClick={() => setEditModalOpen(true)}>Edit query</button>
-          <button className="btn-ghost" title="Subscribe to receive weekly updates" onClick={() => setSubscribeModalOpen(true)}>Subscribe to this query</button>
+          <button className="btn-ghost" title="Subscribe to receive weekly updates" onClick={onSubscribeClick}>Subscribe to this query</button>
         </div>
 
         <div>
@@ -162,18 +159,6 @@ export default function QuerySummary({ query, resultCount, summary, onQueryUpdat
         onClose={() => setEditModalOpen(false)}
         currentQuery={{ abstracts, keywords, year_min: query?.year_min, year_max: query?.year_max }}
         onApply={handleQueryUpdate}
-      />
-
-      <SubscribeModal
-        isOpen={isSubscribeModalOpen}
-        onClose={() => setSubscribeModalOpen(false)}
-        initialQueryName={summary?.query_name || "Saved search"}
-        queryParams={{
-          abstracts,
-          keywords,
-          year_min: query?.year_min,
-          year_max: query?.year_max,
-        }}
       />
       
     </>

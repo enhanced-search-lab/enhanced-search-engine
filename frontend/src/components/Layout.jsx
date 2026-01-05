@@ -9,7 +9,6 @@ export default function Layout() {
         <div className="container topbar-inner">
           <Link to="/" className="brand">Proxima</Link>
           <nav className="nav">
-            <a href="#">Database</a>
             <a href="mailto:appproximaa@gmail.com">Contact</a>
           </nav>
         </div>

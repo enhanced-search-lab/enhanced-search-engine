@@ -105,15 +105,6 @@ export default function SubscriptionVerifiedPage() {
 
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <button
-              onClick={handleBackToSearch}
-              disabled={loading}
-              title={loading ? "Opening search..." : "Open this subscription as a search"}
-              className="inline-flex items-center rounded-full bg-violet-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-violet-700 disabled:opacity-60"
-            >
-              {loading ? "Opening search..." : "Back to search"}
-            </button>
-
-            <button
               type="button"
               onClick={() => navigate("/")}
               title="Go to homepage"
