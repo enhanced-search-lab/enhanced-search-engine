@@ -93,7 +93,7 @@ class SubscriptionVerifyView(APIView):
         frontend_url = getattr(
             settings,
             "SUBSCRIPTION_FRONTEND_VERIFY_URL",
-            "http://localhost:5174/subscription/verified",
+            "http://localhost/subscription/verified",
         )
 
         try:

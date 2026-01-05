@@ -1,8 +1,28 @@
-// src/services/api.js
-export const API =
-  (import.meta.env && import.meta.env.VITE_API_URL) ||
+// // src/services/api.js
+
+/**
+ * Single source of truth for API base.
+ * - In Docker/Nginx proxy setups, keep it relative: "/api"
+ * - You can override with VITE_API_BASE_URL or VITE_API_URL
+ */
+const API_BASE_RAW =
+  (import.meta.env && (import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL)) ||
   "/api";
 
+// Normalize: no trailing slash
+export const API_BASE = String(API_BASE_RAW).replace(/\/+$/, "");
+
+/**
+ * Join base + path safely so we never produce "/api/api/..." or double slashes.
+ * joinApi("/api", "/search/") => "/api/search/"
+ * joinApi("/api/", "subscriber/subscriptions/") => "/api/subscriber/subscriptions/"
+ */
+function joinApi(path) {
+  const p = String(path || "").replace(/^\/+/, ""); // remove leading slashes
+  return `${API_BASE}/${p}`;
+}
+
+// ---------- Search ----------
 
 /**
  * POST /api/search/?page=N&per_page=M
@@ -23,7 +43,9 @@ export async function searchPapersPOST({
   if (typeof year_min === "number") body.year_min = year_min;
   if (typeof year_max === "number") body.year_max = year_max;
 
-  const res = await fetch(`${API}/search/?page=${page}&per_page=${per_page}`, {
+  const url = `${joinApi("search/")}?page=${page}&per_page=${per_page}`;
+
+  const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -47,10 +69,10 @@ export async function searchOpenAlexKeywordPOST({
   year_max,
 } = {}) {
   const body = { keywords, per_page };
-  if (typeof year_min === 'number') body.year_min = year_min;
-  if (typeof year_max === 'number') body.year_max = year_max;
+  if (typeof year_min === "number") body.year_min = year_min;
+  if (typeof year_max === "number") body.year_max = year_max;
 
-  const res = await fetch(`${API}/openalex-keyword-search/`, {
+  const res = await fetch(joinApi("openalex-keyword-search/"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -66,8 +88,6 @@ export async function searchOpenAlexKeywordPOST({
 
 // OpenAlex search based on Gemini-extracted phrases from abstracts + user keywords.
 // POST /api/openalex-gemini-keyword-search/
-// body: { abstracts: string[] | string, keywords: string[] | string, per_page?: number }
-// returns: { count, results[], query: { abstracts, keywords } }
 export async function searchOpenAlexGeminiPOST({
   abstracts = [],
   keywords = [],
@@ -76,10 +96,10 @@ export async function searchOpenAlexGeminiPOST({
   year_max,
 } = {}) {
   const body = { abstracts, keywords, per_page };
-  if (typeof year_min === 'number') body.year_min = year_min;
-  if (typeof year_max === 'number') body.year_max = year_max;
+  if (typeof year_min === "number") body.year_min = year_min;
+  if (typeof year_max === "number") body.year_max = year_max;
 
-  const res = await fetch(`${API}/openalex-gemini-keyword-search/`, {
+  const res = await fetch(joinApi("openalex-gemini-keyword-search/"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -93,14 +113,20 @@ export async function searchOpenAlexGeminiPOST({
   return res.json();
 }
 
+// ---------- Subscriptions ----------
+
+/**
+ * POST /api/subscribe-search/
+ * body: { email, query_name, agree_to_emails, abstracts, keywords, ... }
+ */
 export async function subscribeToSearch(payload) {
-  const res = await fetch(`${API}/subscribe-search/`, {
-    method: "POST",                                // ✅ POST
+  const res = await fetch(joinApi("subscribe-search/"), {
+    method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),                // ✅ abstracts & keywords in body
+    body: JSON.stringify(payload),
   });
 
-  const raw = await res.text(); // read once
+  const raw = await res.text().catch(() => "");
 
   let data = null;
   try {
@@ -116,13 +142,11 @@ export async function subscribeToSearch(payload) {
       if (d.detail) return d.detail;
       if (d.error) return d.error;
       if (d.message) return d.message;
-      // DRF serializer errors often come as { "non_field_errors": ["..."] } or { "field": ["..."] }
       if (d.non_field_errors) {
         return Array.isArray(d.non_field_errors)
           ? d.non_field_errors.join("; ")
           : String(d.non_field_errors);
       }
-      // If it's a dict of field errors, join first messages
       if (typeof d === "object") {
         const parts = [];
         for (const k of Object.keys(d)) {
@@ -135,93 +159,106 @@ export async function subscribeToSearch(payload) {
       return `Server error (${res.status})`;
     };
 
-    const msg = extractMessage(data);
-    throw new Error(msg);
+    throw new Error(extractMessage(data));
   }
 
   return data || { status: "ok" };
 }
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "/api";
-
+/**
+ * GET /api/subscriber/subscriptions/?token=...
+ */
 export async function getSubscriptionsByToken(token) {
-  const res = await fetch(`${API_BASE}/api/subscriber/subscriptions/?token=${encodeURIComponent(token)}`);
+  const url = `${joinApi("subscriber/subscriptions/")}?token=${encodeURIComponent(token)}`;
+  const res = await fetch(url);
+
   if (!res.ok) {
-    const text = await res.text();
+    const text = await res.text().catch(() => "");
     throw new Error(`Failed to load subscriptions (${res.status}): ${text}`);
   }
   return res.json();
 }
 
+/**
+ * POST /api/subscriptions/<id>/unsubscribe/?token=...
+ */
 export async function unsubscribeSubscription(id, token) {
-  const res = await fetch(
-    `${API_BASE}/api/subscriptions/${id}/unsubscribe/?token=${encodeURIComponent(token)}`,
-    {
-      method: "POST",
-    }
-  );
+  const url = `${joinApi(`subscriptions/${id}/unsubscribe/`)}?token=${encodeURIComponent(token)}`;
+  const res = await fetch(url, { method: "POST" });
+
   if (!res.ok && res.status !== 204) {
-    const text = await res.text();
+    const text = await res.text().catch(() => "");
     throw new Error(`Failed to unsubscribe (${res.status}): ${text}`);
   }
   return true;
 }
 
+/**
+ * DELETE /api/subscriptions/<id>/delete/?token=...
+ */
 export async function deleteSubscription(id, token) {
-  const res = await fetch(
-    `${API_BASE}/api/subscriptions/${id}/delete/?token=${encodeURIComponent(token)}`,
-    {
-      method: "DELETE",
-    }
-  );
+  const url = `${joinApi(`subscriptions/${id}/delete/`)}?token=${encodeURIComponent(token)}`;
+  const res = await fetch(url, { method: "DELETE" });
+
   if (!res.ok && res.status !== 204) {
-    const text = await res.text();
+    const text = await res.text().catch(() => "");
     throw new Error(`Failed to delete subscription (${res.status}): ${text}`);
   }
   return true;
 }
 
+/**
+ * POST /api/subscriptions/<id>/toggle-active/?token=...
+ */
 export async function toggleSubscriptionActive(id, token) {
-  const res = await fetch(
-    `${API_BASE}/api/subscriptions/${id}/toggle-active/?token=${encodeURIComponent(token)}`,
-    {
-      method: "POST",
-    }
-  );
+  const url = `${joinApi(`subscriptions/${id}/toggle-active/`)}?token=${encodeURIComponent(token)}`;
+  const res = await fetch(url, { method: "POST" });
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     throw new Error(`Failed to toggle subscription state (${res.status}): ${text}`);
   }
-
   return res.json();
 }
 
-// GoodMatch endpoints (for "marked as good match" items from weekly emails)
+// ---------- GoodMatch endpoints ----------
+
+/**
+ * GET /api/goodmatches/?token=...
+ */
 export async function getGoodMatches(token) {
-  const res = await fetch(`${API_BASE}/api/goodmatches/?token=${encodeURIComponent(token)}`);
+  const url = `${joinApi("goodmatches/")}?token=${encodeURIComponent(token)}`;
+  const res = await fetch(url);
+
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     throw new Error(`Failed to load good matches (${res.status}): ${text}`);
   }
-  return res.json(); // { good_matches: [] }
+  return res.json(); // { good_matches: [] } (veya backend formatın neyse)
 }
 
+/**
+ * DELETE /api/goodmatches/<id>/delete/?token=...
+ */
 export async function deleteGoodMatch(id, token) {
-  const res = await fetch(
-    `${API_BASE}/api/goodmatches/${id}/delete/?token=${encodeURIComponent(token)}`,
-    { method: "DELETE" }
-  );
+  const url = `${joinApi(`goodmatches/${id}/delete/`)}?token=${encodeURIComponent(token)}`;
+  const res = await fetch(url, { method: "DELETE" });
+
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     throw new Error(`Failed to delete good match (${res.status}): ${text}`);
   }
   return res.json();
 }
-// POST /api/eval-feedback/
-// body: { query: { abstracts, keywords }, choice: "left"|"right"|"both"|"none", comment?: string }
+
+// ---------- Eval feedback ----------
+
+/**
+ * POST /api/eval-feedback/
+ * body: { query: { abstracts, keywords }, choice: "left"|"right"|"both"|"none", comment?: string }
+ */
 export async function sendEvalFeedback(payload) {
-  const res = await fetch(`${API}/eval-feedback/`, {
+  const res = await fetch(joinApi("eval-feedback/"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),

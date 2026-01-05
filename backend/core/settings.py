@@ -114,9 +114,10 @@ DATABASES = {
     }
 }
 
+PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "http://localhost")
 SUBSCRIPTION_FRONTEND_MANAGE_URL = os.getenv(
     "SUBSCRIPTION_FRONTEND_MANAGE_URL",
-    "http://localhost:5174/subscriptions/manage",
+    f"{PUBLIC_BASE_URL}/subscriptions/manage"
 )
 
 
@@ -214,7 +215,7 @@ DEFAULT_FROM_EMAIL = os.environ.get(
     EMAIL_HOST_USER or "appproximaa@gmail.com",
 )
 
-SUBSCRIPTION_FRONTEND_VERIFY_URL = "http://localhost:5174/subscription/verified"
+SUBSCRIPTION_FRONTEND_VERIFY_URL = "http://localhost/subscription/verified"
 
 # Base URL for backend endpoints (used when constructing links that should hit Django)
 SUBSCRIPTION_BACKEND_BASE_URL = os.getenv("SUBSCRIPTION_BACKEND_BASE_URL", "http://localhost:8000")
