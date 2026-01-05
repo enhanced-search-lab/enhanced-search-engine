@@ -10,7 +10,18 @@ from typing import List
 MODEL_NAME = "Alibaba-NLP/gte-large-en-v1.5"
 EMBED_DIM = 1024
 
-model = SentenceTransformer(MODEL_NAME, trust_remote_code=True)
+# model = SentenceTransformer(MODEL_NAME, trust_remote_code=True)
+
+from functools import lru_cache
+import os
+
+@lru_cache(maxsize=1)
+def get_model():
+    # Optional: allow skipping model load for migrations/tests
+    if os.getenv("SKIP_EMBED_MODEL", "0") == "1":
+        raise RuntimeError("Embedding model load skipped (SKIP_EMBED_MODEL=1).")
+    return SentenceTransformer(MODEL_NAME, trust_remote_code=True)
+
 
 BASE_WEIGHTS = {
     "main": 0.7,
@@ -86,21 +97,21 @@ def build_final_embedding_for_work(
     if not main_clean:
         return None
 
-    v_main = model.encode([main_clean], normalize_embeddings=True)[0]
+    v_main = get_model().encode([main_clean], normalize_embeddings=True)[0]
 
     # Topic embedding (optional)
     v_topic = None
     if topics_text:
         topics_clean = preprocess_text(topics_text)
         if topics_clean:
-            v_topic = model.encode([topics_clean], normalize_embeddings=True)[0]
+            v_topic = get_model().encode([topics_clean], normalize_embeddings=True)[0]
 
     # Concept embedding (optional)
     v_concept = None
     if concepts_text:
         concepts_clean = preprocess_text(concepts_text)
         if concepts_clean:
-            v_concept = model.encode([concepts_clean], normalize_embeddings=True)[0]
+            v_concept = get_model().encode([concepts_clean], normalize_embeddings=True)[0]
 
     v_final = combine_embeddings(v_main, v_topic, v_concept)
     return v_final
@@ -118,7 +129,7 @@ def _embed_clean_text(text: str) -> Optional[np.ndarray]:
     if not clean:
         return None
 
-    v = model.encode([clean], normalize_embeddings=True)[0]
+    v = get_model().encode([clean], normalize_embeddings=True)[0]
     return v.astype(np.float32)
 
 

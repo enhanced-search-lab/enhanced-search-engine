@@ -1,31 +1,41 @@
-# Use a small, security-patched Python image
+# syntax=docker/dockerfile:1.7
 FROM python:3.12-slim
 
-# Prevent Python from writing .pyc files and buffer logs
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# Set working directory
 WORKDIR /app
 
-# Install system dependencies
 RUN apt-get update \
  && apt-get install -y --no-install-recommends build-essential libpq-dev \
  && rm -rf /var/lib/apt/lists/*
 
-# Copy only requirements first to leverage Docker layer caching
 COPY requirements.txt /app/requirements.txt
 
-# Install Python dependencies without caching wheels to keep image small
-RUN pip install --no-cache-dir -r /app/requirements.txt
 
-# Copy the rest of your backend code into the image
-# (Everything in backend/ will be copied to /app/)
+RUN python -m pip install --upgrade pip setuptools wheel
+
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --default-timeout=600 --retries 30 --prefer-binary \
+    --index-url https://download.pytorch.org/whl/cpu \
+    torch
+
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --default-timeout=600 --retries 30 --prefer-binary sentence-transformers
+
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --default-timeout=600 --retries 30 --prefer-binary -r /app/requirements.txt
+
+
 COPY . /app
 
-# Expose the port your app will listen on (for documentation; Compose maps it)
+RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('Alibaba-NLP/gte-large-en-v1.5', trust_remote_code=True)"
+
+
 EXPOSE 8000
 
-# Default command for production containers:
-#   Use gunicorn to serve Django via WSGI. Replace "core.wsgi" if your project module name differs.
-CMD ["gunicorn", "core.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3"]
+CMD ["gunicorn","core.wsgi:application","--bind","0.0.0.0:8000","--workers","1","--timeout","600"]
+
+
+

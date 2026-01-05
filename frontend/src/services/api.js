@@ -1,8 +1,8 @@
 // src/services/api.js
 export const API =
   (import.meta.env && import.meta.env.VITE_API_URL) ||
-  (typeof process !== "undefined" && process.env?.VITE_API_URL) ||
-  "http://127.0.0.1:8000/api";
+  "/api";
+
 
 /**
  * POST /api/search/?page=N&per_page=M
@@ -142,7 +142,7 @@ export async function subscribeToSearch(payload) {
   return data || { status: "ok" };
 }
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "/api";
 
 export async function getSubscriptionsByToken(token) {
   const res = await fetch(`${API_BASE}/api/subscriber/subscriptions/?token=${encodeURIComponent(token)}`);
