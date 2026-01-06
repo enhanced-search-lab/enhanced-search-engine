@@ -189,18 +189,6 @@
 
           <tr><td style="height:16px;"></td></tr>
 
-          <!-- INTRO -->
-          <tr>
-            <td style="padding: 0 6px 8px 6px;">
-              <div style="padding: 0 18px;">
-                <h2 style="margin:0 0 10px 0; font-size:20px; color:#4f46e5; font-weight:900;">New this week</h2>
-                <p style="margin:0 0 18px 0; color:#374151; font-size:15px;">
-                  Papers indexed in OpenAlex during the last week that match your subscription.
-                </p>
-              </div>
-            </td>
-          </tr>
-
           <!-- SUBSCRIPTION PREVIEW: simplified per request - abstracts stacked and keywords below -->
           <tr>
             <td style="padding:0 6px 16px 6px;">
@@ -259,6 +247,18 @@
                   </td>
                 </tr>
               </table>
+            </td>
+          </tr>
+
+          <!-- INTRO (moved below abstracts preview) -->
+          <tr>
+            <td style="padding: 0 6px 8px 6px;">
+              <div style="padding: 0 18px;">
+                <h2 style="margin:0 0 10px 0; font-size:20px; color:#4f46e5; font-weight:900;">New this week</h2>
+                <p style="margin:0 0 18px 0; color:#374151; font-size:15px;">
+                  Papers indexed in OpenAlex during the last week that match your subscription.
+                </p>
+              </div>
             </td>
           </tr>
 
@@ -335,6 +335,87 @@
                 <p style="margin:0; color:#6b7280;">No matching papers were found this week.</p>
               </td>
             </tr>
+          {% endif %}
+
+          <!-- RELEVANT FROM ARCHIVE SECTION -->
+          {% if archive_items %}
+            <tr>
+              <td style="padding:0 6px 8px 6px;">
+                <div style="padding: 0 18px;">
+                  <h2 style="margin:0 0 10px 0; font-size:20px; color:#4f46e5; font-weight:900;">Relevant from archive</h2>
+                  <p style="margin:0 0 18px 0; color:#374151; font-size:15px;">
+                    Previously published papers that match your subscription.
+                  </p>
+                </div>
+              </td>
+            </tr>
+
+            {% for archive_item in archive_items %}
+              <tr>
+                <td class="card">
+
+                  <!-- HEAD -->
+                  <div class="card-head">
+                    <table width="100%" role="presentation">
+                      <tr>
+                        <!-- LEFT -->
+                        <td style="vertical-align:top; padding-right:16px;">
+                          <h3 class="paper-title">
+                            <a href="{{ archive_item.openalex_url }}" style="color:inherit;">{{ archive_item.title }}</a>
+                          </h3>
+
+                          <!-- Plain meta line -->
+                          <p class="meta-line">
+                            {{ archive_item.year }}
+                            <span class="sep">•</span>
+                            {{ archive_item.authors }}
+                            {% if archive_item.venue %}
+                              <span class="sep">•</span>
+                              {{ archive_item.venue }}
+                            {% endif %}
+                          </p>
+                        </td>
+
+                        <!-- RIGHT -->
+                        <td class="right-col" style="vertical-align:top;">
+                          <div class="sim-label">Similarity</div>
+                          <div class="sim-bar">
+                            <div class="sim-fill" style="width: {{ archive_item.score_percent }}%;"></div>
+                          </div>
+                          <div class="sim-value">{{ archive_item.score_percent }}%</div>
+
+                          <div class="kpi-row">
+                            {% if archive_item.is_open_access %}
+                              <a href="{{ archive_item.oa_url|default:archive_item.openalex_url }}" class="kpi kpi-oa">🌐 Open Access</a>
+                            {% endif %}
+                            <a href="{{ archive_item.openalex_url }}" class="kpi kpi-link">↗ OpenAlex</a>
+                            {% if archive_item.goodmatch_link %}
+                              <a href="{{ archive_item.goodmatch_link }}" class="kpi kpi-link" style="background:#ffe7f3; border-color:#fbcfe8; color:#9d174d;">❤️ Mark as good match</a>
+                            {% endif %}
+                          </div>
+                        </td>
+                      </tr>
+                    </table>
+                  </div>
+
+                  <!-- ABSTRACT (full width) -->
+                  <div class="card-abstract">
+                    <div class="paper-abstract" style="margin-bottom:12px;">
+                      {{ archive_item.abstract|linebreaksbr }}
+                    </div>
+
+                    <div class="paper-footer">
+                      🔗 {{ archive_item.cited_by_count|default:0 }} citations ·
+                      📚 {{ archive_item.references_count|default:0 }} references ·
+                      <a href="{{ archive_item.openalex_url }}" style="color:#4f46e5; text-decoration:underline; font-weight:900;">View on OpenAlex</a>
+                    </div>
+                  </div>
+
+                </td>
+              </tr>
+
+              <tr><td style="height:14px;"></td></tr>
+            {% endfor %}
           {% endif %}
 
           <!-- CTA: Re-added 'View my subscription' button (shown only if manage_url is provided in context) -->

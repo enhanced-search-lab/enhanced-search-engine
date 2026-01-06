@@ -74,8 +74,8 @@
         this.themeStep = 0;
         this.bgRect = this.add.rectangle(w/2,h/2,w,h, 0x061a66).setDepth(-10);
 
-        // BEST SCORE (persist)
-        this.bestScore = Number(localStorage.getItem("jo_best_score") || "0");
+        // BEST SCORE (session-only; resets when tab closes)
+        this.bestScore = Number(sessionStorage.getItem("jo_best_score") || "0");
 
         // UI
         this.score = 0;
@@ -380,7 +380,7 @@
         // best score update
         if(this.score > this.bestScore){
           this.bestScore = this.score;
-          localStorage.setItem("jo_best_score", String(this.bestScore));
+          sessionStorage.setItem("jo_best_score", String(this.bestScore));
           this.bestText.setText("BEST  " + this.bestScore);
 
           // tiny "ping" feel without changing anything else
@@ -445,7 +445,7 @@
         // best update on death too
         if(this.score > this.bestScore){
           this.bestScore = this.score;
-          localStorage.setItem("jo_best_score", String(this.bestScore));
+          sessionStorage.setItem("jo_best_score", String(this.bestScore));
           this.bestText.setText("BEST  " + this.bestScore);
         }
 

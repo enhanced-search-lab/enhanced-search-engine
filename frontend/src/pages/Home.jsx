@@ -101,7 +101,8 @@ export default function Home() {
       }, 0);
     } catch (err) {
       console.error("[Search] failed:", err);
-      alert("Search failed. Check console for details.");
+      // Show a non-blocking inline error instead of blocking alert
+      setYearError("Search failed. Please try again.");
     } finally { setLoading(false); }
   };
 
