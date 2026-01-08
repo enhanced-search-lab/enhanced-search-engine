@@ -9,6 +9,7 @@ This directory contains the frontend code for the Proxima academic search engine
   - [Prerequisites](#prerequisites)
   - [Installation](#installation)
   - [Running the Development Server](#running-the-development-server)
+  - [Testing](#testing)
 
 
 ---
@@ -50,6 +51,34 @@ npm run dev -- --port 5174
 ```
 
 This will start the Vite development server, typically on `http://localhost:5173`. The server features Hot Module Replacement (HMR), so changes you make to the code will be reflected in the browser instantly without a full page reload.
+
+
+### Testing
+
+#### Setup
+
+```bash
+cd frontend
+npm install
+```
+
+#### Run all tests
+
+```bash
+npm test
+```
+
+#### Run a specific test file
+
+- `npm test -- Home` → runs [src/pages/__tests__/Home.test.jsx](src/pages/__tests__/Home.test.jsx)
+- `npm test -- PaperCard` → runs [src/components/__tests__/PaperCard.test.jsx](src/components/__tests__/PaperCard.test.jsx)
+
+#### Testing stack
+
+- Test runner: Vitest (configured in [vitest.config.mts](vitest.config.mts))
+- Component tests: React Testing Library (`@testing-library/react`, `@testing-library/user-event`)
+- Test environment: jsdom
+- Global setup (matchers like `toBeInTheDocument`): [src/test/setupTests.js](src/test/setupTests.js)
 
 
 
