@@ -1,14 +1,14 @@
-#  Enhanced Search Engine for Research Article 
+# Enhanced Search Engine for Research Article
 
-**Enhanced Search Engine for Research Article** is an **AI-driven semantic search and recommendation platform** designed for academic research discovery.  
+**Enhanced Search Engine for Research Article** is an **AI‑driven semantic search and recommendation platform** designed to support academic literature discovery on top of the OpenAlex corpus.
 
-It analyzes **abstracts or keywords** using **TF-IDF** or **Sentence Embedding** models to find the most relevant papers.  
+It analyzes one or more **abstracts and/or keyword lists** provided by the user and uses **sentence‑embedding–based semantic similarity**, alongside classical keyword filtering, to find and rerank the most relevant research articles. The web interface returns a structured list of OpenAlex papers with rich metadata, similarity scores, and support for experimental evaluation modes that compare different retrieval pipelines.
 
-Once a user subscribes via email, the system automatically delivers new articles with high semantic similarity, as well as papers citing or cited by the user’s preferred articles.  
+Users can turn a successful search into an **email subscription** through a double opt‑in flow. For each verified and active subscription, a scheduled job periodically re‑executes the query on fresh OpenAlex data, filters and reranks candidate papers by semantic similarity, avoids resending previously delivered works, and sends a consolidated recommendation email containing both newly discovered and archive matches.
 
-Over time, the engine learns user preferences based on reading and engagement behavior, refining future recommendations for a personalized research experience.
+The system tracks engagement signals such as papers explicitly marked as a **“good match”** from within these emails, as well as optional evaluation feedback from the search interface. These interaction logs are used to monitor and improve the quality of recommendations and provide a foundation for more personalized ranking strategies in future iterations.
 
-##  Contributors
-**Ceydanur Şen**
+## Contributors
 
-**Nurullah Uçan** 
+**Ceydanur Şen**  
+**Nurullah Uçan**
