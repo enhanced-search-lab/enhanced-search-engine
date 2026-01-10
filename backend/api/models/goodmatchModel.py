@@ -24,6 +24,7 @@ class GoodMatch(models.Model):
     last_clicked_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        app_label = "api"
         # Make GoodMatch unique per (subscriber, subscription, work_id)
         # so the same work can be saved under different subscriptions for the same user.
         unique_together = ("subscriber", "subscription", "work_id")

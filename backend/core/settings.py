@@ -15,6 +15,7 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 import dj_database_url
+import sys
 
 
 load_dotenv()
@@ -113,6 +114,18 @@ DATABASES = {
         "PORT": os.getenv("DB_PORT", "5432"),
     }
 }
+
+# Testler çalıştırılırken (manage.py test ...) ayrı bir PostgreSQL test veritabanı
+# oluşturmak yerine yerel bir SQLite dosyası kullan. Böylece veritabanı
+# kullanıcısına CREATEDB yetkisi vermeden backend testlerini rahatça
+# çalıştırabilirsin.
+if "test" in sys.argv:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "test_db.sqlite3",
+        }
+    }
 
 SUBSCRIPTION_FRONTEND_MANAGE_URL = os.getenv(
     "SUBSCRIPTION_FRONTEND_MANAGE_URL",

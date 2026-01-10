@@ -30,6 +30,7 @@ class SentWork(models.Model):
     sent_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:
+        app_label = "api"
         # Prevent duplicate records for the same work in same subscription
         unique_together = ("subscription", "work_id")
         indexes = [

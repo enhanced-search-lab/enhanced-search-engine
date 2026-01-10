@@ -31,6 +31,7 @@ class Paper(models.Model):
     fetched_at = models.DateTimeField(default=timezone.now)
 
     class Meta:
+        app_label = "api"
         ordering = ["-cited_by_count"]
 
     def __str__(self):
