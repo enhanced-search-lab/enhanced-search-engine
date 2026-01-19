@@ -14,6 +14,33 @@ export default function Home() {
   const [abstracts, setAbstracts] = useState([""]);
   const [loading, setLoading] = useState(false);
   const [gameDismissed, setGameDismissed] = useState(false);
+
+  // Progress bar stages for GameModal (Embedding is real, others are delayed)
+  const [openAlexDone, setOpenAlexDone] = useState(false);
+  const [geminiDone, setGeminiDone] = useState(false);
+
+  useEffect(() => {
+    let openAlexTimer, geminiTimer;
+    if (loading) {
+      setOpenAlexDone(false);
+      setGeminiDone(false);
+      openAlexTimer = setTimeout(() => setOpenAlexDone(true), 5000);
+      geminiTimer = setTimeout(() => setGeminiDone(true), 10000);
+    } else {
+      setOpenAlexDone(false);
+      setGeminiDone(false);
+    }
+    return () => {
+      clearTimeout(openAlexTimer);
+      clearTimeout(geminiTimer);
+    };
+  }, [loading]);
+
+  const loadingStages = [
+    { label: 'Embedding', done: !loading },
+    { label: 'OpenAlex', done: openAlexDone || !loading },
+    { label: 'LLM', done: geminiDone || !loading },
+  ];
   const prevLoadingRef = useRef(false);
   const [yearMin, setYearMin] = useState("");
   const [yearMax, setYearMax] = useState("");
@@ -45,36 +72,40 @@ export default function Home() {
     if (!keywords.length && !cleanAbstracts.length) {
       alert("Please add at least one keyword or one abstract."); return;
     }
-  setLoading(true);
+    setLoading(true);
     try {
-      // Ana embedding tabanlı arama (asıl sıralama buradan geliyor)
+      // Main embedding-based search (primary ranking comes from here)
       const payload = { keywords, abstracts: cleanAbstracts, page: 1, per_page: 30 };
       if (yearMin) payload.year_min = Number(yearMin);
       if (yearMax) payload.year_max = Number(yearMax);
       const data = await searchPapersPOST(payload);
 
-  const request = { keywords, abstracts: cleanAbstracts };
-  if (yearMin) request.year_min = Number(yearMin);
-  if (yearMax) request.year_max = Number(yearMax);
+      const request = { keywords, abstracts: cleanAbstracts };
+      if (yearMin) request.year_min = Number(yearMin);
+      if (yearMax) request.year_max = Number(yearMax);
       sessionStorage.setItem("lastSearch", JSON.stringify({ request, data }));
 
-      // SearchPage'in hem embed hem raw OpenAlex aramasını tetiklemesi için
-      // aynı query'yi URL parametrelerine yaz.
+      // Write the same query to URL params so SearchPage can trigger both embed and raw OpenAlex search
       const params = new URLSearchParams();
-  cleanAbstracts.forEach((a) => params.append("abstract", a));
-  if (keywords.length) params.set("keywords", keywords.join(","));
-  if (yearMin) params.set("year_min", String(yearMin));
-  if (yearMax) params.set("year_max", String(yearMax));
+      cleanAbstracts.forEach((a) => params.append("abstract", a));
+      if (keywords.length) params.set("keywords", keywords.join(","));
+      if (yearMin) params.set("year_min", String(yearMin));
+      if (yearMax) params.set("year_max", String(yearMax));
       params.set("page", "1");
 
-      navigate(`/search?${params.toString()}`, { state: { request, data } });
+      // Ensure game modal and progress bar never show on Home after search, reset state after search
+      setGameDismissed(true); // Close modal
+      setTimeout(() => {
+        navigate(`/search?${params.toString()}`, { state: { request, data } });
+      }, 0);
     } catch (err) {
       console.error("[Search] failed:", err);
-      alert("Search failed. Check console for details.");
+      // Show a non-blocking inline error instead of blocking alert
+      setYearError("Search failed. Please try again.");
     } finally { setLoading(false); }
   };
 
-  // live validation for Home year inputs
+  // Live validation for Home year inputs
   useEffect(() => {
     setYearError("");
     setIsYearValid(true);
@@ -109,7 +140,8 @@ export default function Home() {
 
   return (
     <>
-      <GameModal open={loading && !gameDismissed} onClose={() => setGameDismissed(true)} loading={loading} />
+      {/* Home'da arama sırasında oyun ve progress bar göster */}
+      <GameModal open={loading && !gameDismissed} onClose={() => setGameDismissed(true)} loading={loading} loadingStages={loadingStages} />
       <section className="hero bg-dots">
         <div className="container">
           <h1>Discover the Most Relevant <span className="accent">Research Articles</span> Instantly</h1>

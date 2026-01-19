@@ -55,8 +55,6 @@ const SubscribeModal = ({ isOpen, onClose, queryParams, initialQueryName = "" })
     } finally {
       setLoading(false);
     }
-    console.log("Subscribe queryParams:", queryParams);
-
   };
 
   const stopPropagation = (e) => e.stopPropagation();
@@ -127,7 +125,7 @@ const SubscribeModal = ({ isOpen, onClose, queryParams, initialQueryName = "" })
             </div>
 
             {statusMessage && (
-              <p className="text-xs text-gray-700 bg-gray-50 rounded-md p-2">
+              <p className={`text-xs bg-gray-50 rounded-md p-2 ${statusMessage.includes('The fields email, query_name must make a unique set.') ? 'text-red-600 font-semibold' : 'text-gray-700'}`}>
                 {statusMessage}
               </p>
             )}

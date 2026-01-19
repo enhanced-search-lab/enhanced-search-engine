@@ -17,7 +17,7 @@ export default function PaperCard({ paper, hideSimilarity = false, compact = fal
   <article className={`result-card ${compact ? 'compact' : ''}`}>
       <div className="rc-title">
         <a href={paper.url} target="_blank" rel="noreferrer">{paper.title}</a>
-  <div style={{ display: "flex", gap: 8 }}>
+  <div className="rc-actions">
           {!hideSimilarity && paper.per_abstract_sims && paper.per_abstract_sims.length > 0 && (
               <span
               className="badge badge-green"

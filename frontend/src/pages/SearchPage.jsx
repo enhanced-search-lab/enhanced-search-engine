@@ -24,6 +24,10 @@ export default function SearchPage() {
   const [params, setParams] = useSearchParams();
   const [subscribeOpen, setSubscribeOpen] = useState(false);
 
+  // Keep the initial navigation state (e.g. coming from Home) so we can reuse
+  // its already-fetched results and avoid a duplicate request.
+  const initialNavStateRef = useRef(location.state ?? null);
+
 
   const boot =
     location.state ??
@@ -114,6 +118,26 @@ export default function SearchPage() {
     }
   };
 
+  const normalizeQueryForCompare = (q) => {
+    const abstracts = Array.isArray(q?.abstracts) ? q.abstracts : [];
+    const keywords = Array.isArray(q?.keywords) ? q.keywords : [];
+    const yearMinRaw = q?.year_min;
+    const yearMaxRaw = q?.year_max;
+    const year_min = yearMinRaw === null || typeof yearMinRaw === "undefined" || yearMinRaw === ""
+      ? null
+      : Number(yearMinRaw);
+    const year_max = yearMaxRaw === null || typeof yearMaxRaw === "undefined" || yearMaxRaw === ""
+      ? null
+      : Number(yearMaxRaw);
+
+    return {
+      abstracts: abstracts.map((a) => String(a)),
+      keywords: keywords.map((k) => String(k)),
+      year_min: Number.isFinite(year_min) ? year_min : null,
+      year_max: Number.isFinite(year_max) ? year_max : null,
+    };
+  };
+
   useEffect(() => {
     const { abstracts, keywords, year_min, year_max } = queryFromURL;
     if (!abstracts.length && !keywords.length) return;
@@ -125,6 +149,20 @@ export default function SearchPage() {
     // 1) Main embedding-based search (paged)
     const embeddingKey = makeKey({ abstracts, keywords, year_min, year_max, page });
     if (lastEmbeddingKeyRef.current !== embeddingKey) {
+      // If we arrived here from Home with pre-fetched results for the same query,
+      // reuse them and skip a redundant network request.
+      const nav = initialNavStateRef.current;
+      const navReq = nav?.request;
+      const navData = nav?.data;
+      const navMatchesQuery = !!navReq && makeKey(normalizeQueryForCompare(navReq)) === makeKey(normalizeQueryForCompare(queryFromURL));
+      if (page === 1 && navMatchesQuery && navData && Array.isArray(navData?.results)) {
+        lastEmbeddingKeyRef.current = embeddingKey;
+        setError("");
+        setLoading(false);
+        // In eval mode we still wait to render until OpenAlex sets are ready.
+        setPendingData(navData);
+        // Don't return sessionStorage here; Home already wrote it.
+      } else {
       lastEmbeddingKeyRef.current = embeddingKey;
       const reqId = ++embeddingReqIdRef.current;
 
@@ -151,6 +189,7 @@ export default function SearchPage() {
           if (reqId !== embeddingReqIdRef.current) return;
           setLoading(false);
         });
+      }
     }
 
     // 2) Raw keyword-only OpenAlex search (eval mode, not paged)
@@ -185,7 +224,7 @@ export default function SearchPage() {
     }
 
     // 3) Gemini+user keywords OpenAlex search (eval mode, not paged)
-    if (SHOW_EVAL && abstracts && abstracts.length && keywords && keywords.length) {
+    if (SHOW_EVAL && abstracts && abstracts.length) {
       const geminiKey = makeKey({ abstracts, keywords, year_min, year_max });
       if (lastGeminiKeyRef.current !== geminiKey) {
         lastGeminiKeyRef.current = geminiKey;
@@ -250,34 +289,42 @@ export default function SearchPage() {
     setParams(next);
   };
 
-  const handleEvalSubmit = async ({ choice, comment }) => {
-    if (!SHOW_EVAL || !data || !openAlexData) return;
+  // Updated: Accepts { ranking, comment } and sends a fully JSON-compliant payload to backend
+  const handleEvalSubmit = async ({ ranking, comment }) => {
+    if (!SHOW_EVAL || !data) return;
     setEvalSubmitting(true);
     try {
-      // Map normalized choice (left/middle/right) to actual pipeline label
-      let chosen_setup = null;
-      if (choice === "left") chosen_setup = layout.left;
-      else if (choice === "middle") chosen_setup = layout.middle;
-      else if (choice === "right") chosen_setup = layout.right;
-      const payload = {
-        query,
-        choice,
-        comment,
-        layout,
-        chosen_setup,
-        // basitçe iki listenin ilk birkaç ID'sini de ekleyelim (opsiyonel, backend için faydalı olabilir)
-        left_ids: (data.results || []).slice(0, 50).map((p) => p.id),
-        right_ids: (openAlexData.results || []).slice(0, 50).map((p) => p.id),
+      // Map ranking (e.g. ["left", "middle", "right"]) to actual pipeline labels
+      const ranking_labels = ranking.map((col) => layout[col]);
+
+      // Each slot's results (for traceability)
+      const slotResults = {
+        embedding: (data?.results || []).slice(0, 20),
+        raw_openalex: (openAlexData?.results || []).slice(0, 20),
+        gemini_openalex: (openAlexGeminiData?.results || []).slice(0, 20),
       };
 
-      // Construct the persisted-like object to return to the caller so the UI can
-      // immediately show what was recorded. We include a local timestamp.
+      // JSON-compliant feedback payload
+      const payload = {
+        query,
+        ranking, // e.g. ["left", "middle", "right"]
+        ranking_labels, // e.g. ["embedding", "raw_openalex", "gemini_openalex"]
+        comment,
+        layout, // { left, middle, right }
+        slotResults,
+        left_ids: slotResults[layout.left]?.map((p) => p.id) || [],
+        middle_ids: slotResults[layout.middle]?.map((p) => p.id) || [],
+        right_ids: slotResults[layout.right]?.map((p) => p.id) || [],
+      };
+
+      // Persisted object for UI
       const persisted = {
         query: payload.query,
-        choice: payload.choice,
+        ranking: payload.ranking,
+        ranking_labels: payload.ranking_labels,
         comment: payload.comment,
         layout: payload.layout,
-        chosen_setup: payload.chosen_setup,
+        slotResults: payload.slotResults,
         ts: new Date().toISOString(),
       };
 
@@ -285,14 +332,13 @@ export default function SearchPage() {
       return persisted;
     } catch (e) {
       console.warn("Eval feedback send failed", e);
-      // Even if sending failed, return a local persisted object so the UI can
-      // show immediate feedback to the user.
+      // Even if sending failed, return a local persisted object so the UI can show immediate feedback
       return {
         query,
-        choice,
+        ranking,
+        ranking_labels: ranking.map((col) => layout[col]),
         comment,
         layout,
-        chosen_setup: choice === "left" ? layout.left : choice === "middle" ? layout.middle : layout.right,
         ts: new Date().toISOString(),
       };
     } finally {
@@ -317,17 +363,6 @@ export default function SearchPage() {
     if (newQuery && typeof newQuery.year_min !== 'undefined') nextQuery.year_min = newQuery.year_min;
     if (newQuery && typeof newQuery.year_max !== 'undefined') nextQuery.year_max = newQuery.year_max;
 
-    // QuerySummary'de gösterilen metni sonuç beklemeden hemen güncelle
-    setQuery(nextQuery);
-
-    // Clear previous results so the UI shows a unified loading state
-    // In eval mode we want to wait for all three result sets before rendering.
-    setPendingData(null);
-    setData(null);
-    setOpenAlexData(null);
-    setOpenAlexGeminiData(null);
-    setError("");
-
     // Build URL params (prefer explicit years from nextQuery, otherwise local inputs)
     const next = new URLSearchParams();
     safeAbstracts.forEach((a) => next.append("abstract", a));
@@ -344,6 +379,26 @@ export default function SearchPage() {
     } else {
       if (yearMax) next.set('year_max', String(yearMax)); else next.delete('year_max');
     }
+
+    // If user clicked Apply without actually changing the query and we're already on page 1,
+    // do NOT clear results (otherwise UI shows "No results" because the effect won't re-run).
+    const currentParams = new URLSearchParams(params);
+    if (currentParams.toString() === next.toString()) {
+      setQuery(nextQuery);
+      return;
+    }
+
+    // QuerySummary'de gösterilen metni sonuç beklemeden hemen güncelle
+    setQuery(nextQuery);
+
+    // Clear previous results so the UI shows a unified loading state
+    // In eval mode we want to wait for all three result sets before rendering.
+    setPendingData(null);
+    setData(null);
+    setOpenAlexData(null);
+    setOpenAlexGeminiData(null);
+    setError("");
+
     setParams(next);
   };
 
@@ -399,20 +454,37 @@ export default function SearchPage() {
 
   // Any in-progress request across embedding/OpenAlex/Gemini
   const anyLoading = loading || loadingOpenAlex || loadingGemini;
+
+  // Only show game modal if not just navigated from Home (i.e., location.state is not present)
   const [gameDismissed, setGameDismissed] = useState(false);
   const prevAnyLoadingRef = useRef(false);
+  const justArrivedFromHome = !!location.state;
 
-  // When loading begins (transition false -> true), reset dismissed state so modal can show
   useEffect(() => {
-    if (anyLoading && !prevAnyLoadingRef.current) {
+    if (anyLoading && !prevAnyLoadingRef.current && !justArrivedFromHome) {
       setGameDismissed(false);
     }
     prevAnyLoadingRef.current = anyLoading;
-  }, [anyLoading]);
+  }, [anyLoading, justArrivedFromHome]);
+
+  // Progress bar stages for GameModal
+  const loadingStages = [
+    { label: 'Embedding', done: !loading },
+    SHOW_EVAL && (queryFromURL.keywords || []).length > 0 ? { label: 'OpenAlex', done: !loadingOpenAlex } : null,
+    SHOW_EVAL && (queryFromURL.abstracts || []).length > 0 && (queryFromURL.keywords || []).length > 0 ? { label: 'LLM', done: !loadingGemini } : null,
+  ].filter(Boolean);
 
   return (
     <div style={{display:"grid", gap:24}}>
-      <GameModal open={anyLoading && !allReady && !gameDismissed} onClose={() => setGameDismissed(true)} loading={anyLoading && !allReady} />
+      {/* Only show GameModal if not just arrived from Home (prevents double modal) */}
+      {!justArrivedFromHome && (
+        <GameModal
+          open={anyLoading && !allReady && !gameDismissed}
+          onClose={() => setGameDismissed(true)}
+          loading={anyLoading && !allReady}
+          loadingStages={loadingStages}
+        />
+      )}
       <QuerySummary
         query={query}
         // Eval modu açıkken global sonuç sayısını gizle, ama similarity metnini göstermeye devam et
@@ -476,70 +548,72 @@ export default function SearchPage() {
       )}
 
 
+
     {SHOW_EVAL ? (
       !allReady ? (
         <div style={{ padding: 24, textAlign: "center", color: "#6b7280" }}>
           Loading all result sets…
         </div>
       ) : (
-        <div className="grid gap-y-8 gap-x-4 md:grid-cols-3">
-          {/* Left column */}
-          <div>
-            <SearchResultsList
-              results={
-                layout.left === "embedding"
-                  ? (data?.results || []).slice(0, 20)
-                  : layout.left === "raw_openalex"
-                  ? (openAlexData?.results || []).slice(0, 20)
-                  : (openAlexGeminiData?.results || []).slice(0, 20)
-              }
-              loading={false}
-              error={error}
-              hideSimilarity={SHOW_EVAL}
-              compact={SHOW_EVAL}
-            />
-          </div>
+        <>
+          {data && (
+            <EvalFeedback onSubmit={handleEvalSubmit} submitting={evalSubmitting} />
+          )}
+          <div className="grid gap-y-8 gap-x-4 md:grid-cols-3">
+            {/* Left column */}
+            <div>
+              <SearchResultsList
+                results={
+                  layout.left === "embedding"
+                    ? (data?.results || []).slice(0, 15)
+                    : layout.left === "raw_openalex"
+                    ? (openAlexData?.results || []).slice(0, 15)
+                    : (openAlexGeminiData?.results || []).slice(0, 15)
+                }
+                loading={false}
+                error={error}
+                hideSimilarity={SHOW_EVAL}
+                compact={SHOW_EVAL}
+              />
+            </div>
 
-          {/* Middle column */}
-          <div>
-            <SearchResultsList
-              results={
-                layout.middle === "embedding"
-                  ? (data?.results || []).slice(0, 20)
-                  : layout.middle === "raw_openalex"
-                  ? (openAlexData?.results || []).slice(0, 20)
-                  : (openAlexGeminiData?.results || []).slice(0, 20)
-              }
-              loading={false}
-              error={error}
-              hideSimilarity={SHOW_EVAL}
-              compact={SHOW_EVAL}
-            />
-          </div>
+            {/* Middle column */}
+            <div>
+              <SearchResultsList
+                results={
+                  layout.middle === "embedding"
+                    ? (data?.results || []).slice(0, 15)
+                    : layout.middle === "raw_openalex"
+                    ? (openAlexData?.results || []).slice(0, 15)
+                    : (openAlexGeminiData?.results || []).slice(0, 15)
+                }
+                loading={false}
+                error={error}
+                hideSimilarity={SHOW_EVAL}
+                compact={SHOW_EVAL}
+              />
+            </div>
 
-          {/* Right column */}
-          <div>
-            <SearchResultsList
-              results={
-                layout.right === "embedding"
-                  ? (data?.results || []).slice(0, 20)
-                  : layout.right === "raw_openalex"
-                  ? (openAlexData?.results || []).slice(0, 20)
-                  : (openAlexGeminiData?.results || []).slice(0, 20)
-              }
-              loading={false}
-              error={error}
-              hideSimilarity={SHOW_EVAL}
-              compact={SHOW_EVAL}
-            />
+            {/* Right column */}
+            <div>
+              <SearchResultsList
+                results={
+                  layout.right === "embedding"
+                    ? (data?.results || []).slice(0, 15)
+                    : layout.right === "raw_openalex"
+                    ? (openAlexData?.results || []).slice(0, 15)
+                    : (openAlexGeminiData?.results || []).slice(0, 15)
+                }
+                loading={false}
+                error={error}
+                hideSimilarity={SHOW_EVAL}
+                compact={SHOW_EVAL}
+              />
+            </div>
           </div>
-        </div>
+        </>
       )
-      ) : null}
-
-      {SHOW_EVAL && data && openAlexData && (
-        <EvalFeedback onSubmit={handleEvalSubmit} submitting={evalSubmitting} />
-      )}
+    ) : null}
 
       {data && (
         <div style={{marginTop:8, display:"flex", gap:12}}>

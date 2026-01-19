@@ -21,7 +21,7 @@ const Statistics = () => {
         <section id="statistics" className="py-20 bg-white">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="text-center mb-16">
-                    <h3 className="text-3xl font-bold text-gray-900 mb-4">Powered by OpenAlex Database</h3>
+                    <h3 className="text-3xl font-bold text-gray-900 mb-4">Powered by OpenAlex</h3>
                     <p className="text-xl text-gray-600 max-w-3xl mx-auto">
                         Access the world's largest open catalog of scholarly papers, authors, institutions, and research topics
                     </p>
