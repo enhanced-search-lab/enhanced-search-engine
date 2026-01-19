@@ -42,5 +42,6 @@ class Subscription(models.Model):
         return f"{self.email} – {self.query_name}"
     
     class Meta:
+        app_label = "api"
         # Prevent the same email subscribing to the same query_name multiple times
         unique_together = ("email", "query_name")

@@ -57,7 +57,7 @@ def record_goodmatch(request):
     # This allows the same work to be saved separately under different subscriptions.
     gm = GoodMatch.objects.filter(subscriber=subscriber, subscription=subscription_obj, work_id=work_id).first()
     if gm:
-        # update last_clicked_at (don't track click_count per request)
+        # Update last_clicked_at (don't track click_count per request)
         gm.last_clicked_at = timezone.now()
         # update score if provided
         try:
@@ -70,7 +70,7 @@ def record_goodmatch(request):
         except Exception:
             gm.save()
     else:
-        # create a new GoodMatch tied to this subscription (may be None)
+        # Create a new GoodMatch tied to this subscription (may be None)
         try:
             gm = GoodMatch.objects.create(
                 subscriber=subscriber,
@@ -82,7 +82,7 @@ def record_goodmatch(request):
             )
         except Exception:
             # If create fails (e.g., unique constraint from old schema),
-            # fall back to updating/creating by subscriber+work_id to preserve behavior.
+            # Fall back to updating/creating by subscriber+work_id to preserve behavior.
             gm, created = GoodMatch.objects.get_or_create(
                 subscriber=subscriber,
                 work_id=work_id,

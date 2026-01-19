@@ -32,3 +32,6 @@ class Subscriber(models.Model):
 
     def __str__(self):
         return self.email
+
+    class Meta:
+        app_label = "api"

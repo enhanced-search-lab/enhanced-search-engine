@@ -65,7 +65,7 @@ class OpenAlexGeminiKeywordSearchView(APIView):
 
         per_page = max(1, min(per_page, 200))
 
-        # 1) LLM'den phrase'leri çıkar  !!
+        # 1) Extract phrases from LLM output
         all_llm_tokens = []
         try:
             for abs_text in abstracts:
@@ -84,11 +84,11 @@ class OpenAlexGeminiKeywordSearchView(APIView):
                 status=status.HTTP_502_BAD_GATEWAY,
             )
 
-        # 2) Kullanıcı keyword'lerini ekle  !!
+        # 2) Add user-provided keywords
         user_kw_tokens = [str(k).strip() for k in keywords if str(k).strip()]
         print(f"!! [GEMINI PIPELINE] User kw tokens: {user_kw_tokens}")
 
-    # 3) LLM phrases + kullanıcı keyword'lerini birleştir ve case-insensitive tekilleştir  !!
+        # 3) Combine LLM phrases and user keywords, deduplicate case-insensitively
         temp_tokens = all_llm_tokens + user_kw_tokens
         seen_keys = set()
         combined_tokens = []
@@ -110,7 +110,7 @@ class OpenAlexGeminiKeywordSearchView(APIView):
                 }
             )
 
-        # 4) Progressive relaxation ile tek OpenAlex araması  !!
+        # 4) Single OpenAlex search with progressive relaxation
         # Optional year bounds passed to OpenAlex progressive fetch
         year_min = request.data.get("year_min")
         year_max = request.data.get("year_max")

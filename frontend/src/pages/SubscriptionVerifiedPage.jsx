@@ -1,4 +1,4 @@
-// src/pages/SubscriptionVerifiedPage.jsx
+// Subscription verification page
 import React, { useCallback, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
@@ -18,7 +18,7 @@ export default function SubscriptionVerifiedPage() {
   const [loadError, setLoadError] = useState(null);
 
   const handleBackToSearch = useCallback(async () => {
-    // sub_id yoksa, normal boş search sayfasına git
+    // If sub_id is missing, go to the default search page
     if (!subId) {
       navigate("/search");
       return;
@@ -28,7 +28,7 @@ export default function SubscriptionVerifiedPage() {
       setLoading(true);
       setLoadError(null);
 
-      // 1) Subscription detaylarını çek
+      // 1) Fetch subscription details
       const res = await fetch(`${API_BASE}/api/subscriptions/${subId}/`);
       if (!res.ok) {
         throw new Error(`Failed to load subscription (status ${res.status})`);
@@ -38,7 +38,7 @@ export default function SubscriptionVerifiedPage() {
       const abstracts = data.abstracts || [];
       const keywords = data.keywords || [];
 
-      // 2) URL query paramlarını hazırla
+      // 2) Prepare URL query parameters
       const sp = new URLSearchParams();
       abstracts.forEach((a) => sp.append("abstract", a));
       if (keywords.length) {
@@ -46,7 +46,7 @@ export default function SubscriptionVerifiedPage() {
       }
       sp.set("page", "1");
 
-      // 3) Search sayfasına URL ile git
+      // 3) Navigate to Search page with URL
       navigate(`/search?${sp.toString()}`);
     } catch (err) {
       console.error(err);
@@ -104,15 +104,6 @@ export default function SubscriptionVerifiedPage() {
           )}
 
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <button
-              onClick={handleBackToSearch}
-              disabled={loading}
-              title={loading ? "Opening search..." : "Open this subscription as a search"}
-              className="inline-flex items-center rounded-full bg-violet-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-violet-700 disabled:opacity-60"
-            >
-              {loading ? "Opening search..." : "Back to search"}
-            </button>
-
             <button
               type="button"
               onClick={() => navigate("/")}

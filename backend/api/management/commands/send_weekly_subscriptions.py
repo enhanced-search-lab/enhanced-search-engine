@@ -4,6 +4,7 @@ from django.template.loader import render_to_string
 from django.core.mail import EmailMultiAlternatives
 from datetime import timedelta
 from api.models.subscriptionModel import Subscription
+from api.models.sentWorkModel import SentWork
 from app.openalex_client import work_to_text_fields
 from app.services.openalex_multi_abstract import rerank_openalex_for_abstracts
 import math
@@ -64,6 +65,144 @@ def score_work_against_subscription(work_text, subscription):
     if subscription.query_name and subscription.query_name.lower() in text:
         score += 1
     return score
+
+
+def get_archive_items(subscription, exclude_work_ids=None, count=5):
+    """Retrieve archive items from a general search on subscription's abstracts/keywords.
+    
+    This performs a search across all publication dates (not just last week)
+    using the subscription's abstracts and keywords, then returns the top items
+    excluding any that have already been sent to this subscription.
+    
+    Args:
+        subscription: Subscription object
+        exclude_work_ids: Set of work_ids to exclude (current week's items + previously sent items)
+        count: Number of items to retrieve (default 5)
+    
+    Returns:
+        List of archive work items with full details (abstract, authors, etc.)
+    """
+    if exclude_work_ids is None:
+        exclude_work_ids = set()
+    
+    # Get all work IDs that have ever been sent to this subscription
+    previously_sent = SentWork.objects.filter(subscription=subscription).values_list(
+        'work_id', flat=True
+    )
+    exclude_work_ids = exclude_work_ids.union(set(previously_sent))
+    
+    # Prepare search parameters from subscription
+    abstracts_list = []
+    if getattr(subscription, 'abstracts', None):
+        try:
+            if isinstance(subscription.abstracts, (list, tuple)):
+                abstracts_list = [a for a in subscription.abstracts if a]
+            else:
+                abstracts_list = [str(subscription.abstracts)]
+        except Exception:
+            abstracts_list = []
+    
+    kw_list = []
+    if getattr(subscription, 'keywords', None):
+        try:
+            if isinstance(subscription.keywords, (list, tuple)):
+                kw_list = [str(k).strip() for k in subscription.keywords if str(k).strip()]
+            else:
+                kw_list = [t.strip() for t in re.split(r"[;,]", str(subscription.keywords)) if t.strip()]
+        except Exception:
+            kw_list = []
+    
+    user_keywords_raw = ";".join(kw_list)
+    
+    # Apply same similarity threshold as weekly items
+    threshold = float(getattr(settings, 'WEEKLY_MIN_SIMILARITY_PERCENT', 65))
+
+    def run_search(per_group: int, top_k: int):
+        return rerank_openalex_for_abstracts(
+            abstracts=abstracts_list,
+            user_keywords_raw=user_keywords_raw,
+            per_group=per_group,
+            top_k=top_k,
+            from_publication_date=None,  # No date restriction
+            to_publication_date=None,    # No date restriction
+        )
+
+    def collect_candidates(scored, seen_ids: set):
+        items = []
+        for entry in scored:
+            w = entry.get('work')
+            if not w:
+                continue
+
+            work_id = (w.get('id') or '').rsplit('/', 1)[-1]
+            if work_id in exclude_work_ids or work_id in seen_ids:
+                continue  # Skip already sent or already picked in this run
+
+            # Get score_percent
+            sims = entry.get('per_abstract_sims') or []
+            if sims:
+                avg_sim = sum(sims) / len(sims)
+                score_percent = round(avg_sim * 100, 2)
+            else:
+                score_percent = 0
+
+            if score_percent < threshold:
+                continue  # respect threshold for archive too
+
+            # Extract full work details (same as for new items)
+            wid, title, abstract_text, topics_text, concepts_text = work_to_text_fields(w)
+            short_id = work_id
+            oa_url = f"https://openalex.org/{short_id}" if short_id else ''
+            year = w.get('publication_year') or w.get('year') or ''
+            venue = (w.get('host_venue') or {}).get('display_name') or ''
+            authors = ', '.join([a.get('author', {}).get('display_name') for a in w.get('authorships', []) if a.get('author')])[:200]
+
+            open_access = w.get('open_access') or {}
+            is_oa = bool(open_access.get('is_oa'))
+            best_oa = (w.get('best_oa_location') or {})
+            oa_link = best_oa.get('url') or ''
+            cited_by = w.get('cited_by_count') or 0
+            references_count = len(w.get('referenced_works') or [])
+
+            items.append({
+                'title': title or '',
+                'abstract': abstract_text or '',
+                'openalex_url': oa_url,
+                'year': year,
+                'venue': venue,
+                'authors': authors,
+                'score_percent': score_percent,
+                'is_open_access': is_oa,
+                'oa_url': oa_link,
+                'cited_by_count': cited_by,
+                'references_count': references_count,
+                'is_archive': True,
+            })
+            seen_ids.add(work_id)
+        return items
+
+    try:
+        # First pass: normal breadth
+        scored = run_search(per_group=30, top_k=200)
+    except Exception:
+        return []
+
+    seen_ids = set()
+    candidates = collect_candidates(scored, seen_ids)
+
+    # Fallback: widen search if not enough unique items left
+    if len(candidates) < count:
+        try:
+            scored_wide = run_search(per_group=60, top_k=400)
+            more = collect_candidates(scored_wide, seen_ids)
+            candidates.extend(more)
+        except Exception:
+            pass
+
+    return candidates[:count]
+
+
+
 
 
 class Command(BaseCommand):
@@ -231,6 +370,8 @@ class Command(BaseCommand):
                 # Use explicit backend base URL (avoid pointing links to frontend dev server)
                 base_site = getattr(settings, 'SUBSCRIPTION_BACKEND_BASE_URL', '') or getattr(settings, 'SITE_URL', '')
 
+                # Collect work_ids from current items for duplicate filtering
+                current_work_ids = set()
                 for it in items:
                     payload = {
                         'subscriber_token': subscriber.manage_token,
@@ -240,15 +381,36 @@ class Command(BaseCommand):
                         'subscription_id': sub.id,
                         'score_percent': it.get('score_percent', 0),
                     }
+                    work_id = it.get('openalex_url', '').rsplit('/', 1)[-1]
+                    current_work_ids.add(work_id)
+                    
                     signed = signing.dumps(payload, salt='goodmatch-v1')
                     site_root = (base_site or '').rstrip('/')
                     it['goodmatch_link'] = f"{site_root}/api/goodmatch/record/?gm={signed}"
+
+                # Get archive items (general search, excluding current week's items and all previously sent)
+                archive_items = get_archive_items(sub, exclude_work_ids=current_work_ids, count=5)
+                
+                # Add goodmatch links to archive items
+                for archive_item in archive_items:
+                    payload = {
+                        'subscriber_token': subscriber.manage_token,
+                        'work_id': archive_item.get('openalex_url', '').rsplit('/', 1)[-1],
+                        'title': archive_item.get('title', ''),
+                        'openalex_url': archive_item.get('openalex_url', ''),
+                        'subscription_id': sub.id,
+                        'score_percent': archive_item.get('score_percent', 0),
+                    }
+                    signed = signing.dumps(payload, salt='goodmatch-v1')
+                    site_root = (base_site or '').rstrip('/')
+                    archive_item['goodmatch_link'] = f"{site_root}/api/goodmatch/record/?gm={signed}"
 
                 safe_search_name = _sanitize_header_value(sub.query_name or 'Your search')
 
                 context = {
                     'search_name': safe_search_name,
                     'new_items': items,
+                    'archive_items': archive_items,
                     'manage_url': manage_url,
                     'subscription_keywords': subscription_keywords,
                     'subscription_abstracts': subscription_abstracts,
@@ -264,6 +426,39 @@ class Command(BaseCommand):
                     msg.send()
                     sub.last_sent_at = now
                     sub.save()
+                    
+                    # Record all sent items (both new and archive) in SentWork for future duplicate prevention
+                    # First, record new items (from this week)
+                    for entry in chosen:
+                        w = entry['work']
+                        work_id = (w.get('id') or '').rsplit('/', 1)[-1]
+
+                        try:
+                            SentWork.objects.update_or_create(
+                                subscription=sub,
+                                work_id=work_id,
+                                defaults={
+                                    'subscriber': subscriber,
+                                }
+                            )
+                        except Exception as e:
+                            self.stderr.write(f"Failed to record SentWork for {work_id}: {e}")
+                    
+                    # Also record archive items so they won't be suggested again
+                    for archive_item in archive_items:
+                        work_id = archive_item.get('openalex_url', '').rsplit('/', 1)[-1]
+
+                        try:
+                            SentWork.objects.update_or_create(
+                                subscription=sub,
+                                work_id=work_id,
+                                defaults={
+                                    'subscriber': subscriber,
+                                }
+                            )
+                        except Exception as e:
+                            self.stderr.write(f"Failed to record archive SentWork for {work_id}: {e}")
+                    
                     sent_count += 1
                     self.stdout.write(self.style.SUCCESS(f"Sent to {sub.email} ({len(items)} items)"))
                 except Exception as e:
@@ -272,3 +467,4 @@ class Command(BaseCommand):
                 self.stdout.write(f"No items for {sub.email}")
 
         self.stdout.write(self.style.SUCCESS(f"Done. Emails sent: {sent_count}"))
+
