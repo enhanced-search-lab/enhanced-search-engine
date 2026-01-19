@@ -47,8 +47,8 @@ class PaperSearchView(APIView):
 
         abstracts = s.validated_data.get("abstracts", []) or []
         keywords = s.validated_data.get("keywords", []) or []
-        year_min = s.validated_data.get("year_min")  # Şu an pipeline'da kullanılmıyor
-        year_max = s.validated_data.get("year_max")  # Şu an pipeline'da kullanılmıyor
+        year_min = s.validated_data.get("year_min")  # Not currently used in pipeline
+        year_max = s.validated_data.get("year_max")  # Not currently used in pipeline
 
         if not abstracts and not keywords:
             return Response(
@@ -71,10 +71,10 @@ class PaperSearchView(APIView):
 
         # 3) Semantic search: OpenAlex + Gemini + embedding re-rank (Qdrant yok)
         try:
-            # keywords listesi → raw string
+            # Join keywords into a raw string
             user_keywords_raw = ";".join([k for k in keywords if k.strip()])
 
-            # TOP_K: pagination için bir üst sınır (en az sayfa*per_page, en az 150)
+            # TOP_K: upper bound for pagination (at least page*per_page, minimum 150)
             # Reduced default to 150 to limit work per request and avoid long-running requests that can cause client disconnects.
             TOP_K = max(page * per_page, 150)
 
@@ -129,7 +129,7 @@ class PaperSearchView(APIView):
         # scored: [{ "total_score", "per_abstract_sims", "per_abstract_contribs", "work" }, ...]
         total_count = len(scored)
 
-        # Basit pagination: scored listesini slice et
+        # Simple pagination: slice the scored list
         start_idx = (page - 1) * per_page
         end_idx = start_idx + per_page
         page_slice = scored[start_idx:end_idx]
@@ -146,9 +146,9 @@ class PaperSearchView(APIView):
             item = self.to_item(work)     
             item["score"] = total_sim
 
-            # Eğer UI'da göstermek istersen:
+            # For UI display:
             item["per_abstract_sims"] = sims
-            item["per_abstract_contribs"] = [round(c * 100, 1) for c in contribs]  # % cinsinden
+            item["per_abstract_contribs"] = [round(c * 100, 1) for c in contribs]  # as percentage
             item["total_score"] = total_sim  # Ensure total_score is included in the response
 
             items.append(item)
@@ -206,7 +206,7 @@ class PaperSearchView(APIView):
         cited_by_count   = w.get("cited_by_count", 0)
         references_count = len(w.get("referenced_works") or [])
 
-        # id'yi kısa formda tut (W1234567)
+            # Keep id in short form (W1234567)
         short_id = (w.get("id") or "").rsplit("/", 1)[-1]
 
         return {

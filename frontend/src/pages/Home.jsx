@@ -15,7 +15,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [gameDismissed, setGameDismissed] = useState(false);
 
-  // Progress bar stages for GameModal (Embed gerçek, diğerleri gecikmeli)
+  // Progress bar stages for GameModal (Embedding is real, others are delayed)
   const [openAlexDone, setOpenAlexDone] = useState(false);
   const [geminiDone, setGeminiDone] = useState(false);
 
@@ -74,7 +74,7 @@ export default function Home() {
     }
     setLoading(true);
     try {
-      // Ana embedding tabanlı arama (asıl sıralama buradan geliyor)
+      // Main embedding-based search (primary ranking comes from here)
       const payload = { keywords, abstracts: cleanAbstracts, page: 1, per_page: 30 };
       if (yearMin) payload.year_min = Number(yearMin);
       if (yearMax) payload.year_max = Number(yearMax);
@@ -85,8 +85,7 @@ export default function Home() {
       if (yearMax) request.year_max = Number(yearMax);
       sessionStorage.setItem("lastSearch", JSON.stringify({ request, data }));
 
-      // SearchPage'in hem embed hem raw OpenAlex aramasını tetiklemesi için
-      // aynı query'yi URL parametrelerine yaz.
+      // Write the same query to URL params so SearchPage can trigger both embed and raw OpenAlex search
       const params = new URLSearchParams();
       cleanAbstracts.forEach((a) => params.append("abstract", a));
       if (keywords.length) params.set("keywords", keywords.join(","));
@@ -94,8 +93,8 @@ export default function Home() {
       if (yearMax) params.set("year_max", String(yearMax));
       params.set("page", "1");
 
-      // Oyun modalı ve progress bar Home'da asla görünmesin, arama sonrası state sıfırlansın
-      setGameDismissed(true); // Modalı kapat
+      // Ensure game modal and progress bar never show on Home after search, reset state after search
+      setGameDismissed(true); // Close modal
       setTimeout(() => {
         navigate(`/search?${params.toString()}`, { state: { request, data } });
       }, 0);
@@ -106,7 +105,7 @@ export default function Home() {
     } finally { setLoading(false); }
   };
 
-  // live validation for Home year inputs
+  // Live validation for Home year inputs
   useEffect(() => {
     setYearError("");
     setIsYearValid(true);

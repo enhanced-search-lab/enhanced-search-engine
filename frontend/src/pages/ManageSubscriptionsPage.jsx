@@ -1,4 +1,4 @@
-// src/pages/ManageSubscriptionsPage.jsx
+// Manage subscriptions page
 import React, { useEffect, useState, useCallback } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 
@@ -27,10 +27,10 @@ import { useSearchParams, useNavigate } from "react-router-dom";
     const [gmError, setGmError] = useState("");
     const [gmBusyId, setGmBusyId] = useState(null);
 
-    // per-subscription expanded state for abstracts (array of indexes)
+    // Per-subscription expanded state for abstracts (array of indexes)
     const [expandedAbstracts, setExpandedAbstracts] = useState({});
 
-    // modal için
+    // For modal dialog
     const [confirmingSub, setConfirmingSub] = useState(null);
     const [confirmLoading, setConfirmLoading] = useState(false);
     const [confirmMode, setConfirmMode] = useState("toggle"); // 'toggle' or 'delete'

@@ -92,7 +92,7 @@ class PaperSearchViewTests(APITestCase):
 		self.assertIn("total_score", item)
 		self.assertIn("score", item)
 
-		# Basic sanity on concepts/authors
+		# Basic sanity check for concepts/authors
 		self.assertIn("Artificial Intelligence", item["concepts"])
 		self.assertIn("Author One", item["authors"])
 

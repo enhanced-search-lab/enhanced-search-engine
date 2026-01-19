@@ -47,17 +47,15 @@ class EvalFeedbackView(APIView):
         # We deliberately do not store per-paper ids; only which setup was on each
         # side and what the user chose.
         try:
-            # Frontend, her sayfa yüklemesinde üç pipeline'ı (embedding, raw_openalex,
-            # gemini_openalex) rastgele olarak left/middle/right sütunlarına dağıtır ve
-            # bu mapping'i "layout" alanında gönderir. Eğer gelmediyse eski sabit
-            # yerleşime geri düşeriz.
+            # Frontend randomly assigns three pipelines (embedding, raw_openalex, gemini_openalex)
+            # to left/middle/right columns and sends this mapping in the "layout" field. If missing, fallback to default layout.
             layout = data.get("layout") or {}
             left_setup = layout.get("left", "embedding")
             middle_setup = layout.get("middle", "raw_openalex")
             right_setup = layout.get("right", "gemini_openalex")
 
-            # Sadece istenen alanları kaydet: id'ler ve ranking yok, ilk seçim choice, chosen_setup embedding, tercih sırası order
-            # 'choice' ilk seçilen sütun olacak (ranking varsa ilk eleman, yoksa choice)
+            # Only save required fields: no ids or ranking, first selection is 'choice', chosen_setup is embedding, order is ranking
+            # 'choice' will be the first selected column (first element of ranking if present, else choice)
             ranking = data.get("ranking")
             choice = ranking[0] if isinstance(ranking, list) and ranking else (data.get("choice") or None)
             order = ranking if isinstance(ranking, list) else None

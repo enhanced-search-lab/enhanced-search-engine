@@ -32,7 +32,7 @@ class SubscriptionCreateView(APIView):
         abstracts = data.get("abstracts", [])
         keywords = data.get("keywords", [])
         
-         # 1) Subscriber bul / oluştur
+         # 1) Find or create subscriber
         subscriber, _ = Subscriber.objects.get_or_create(email=email)
         
         # ... create/get Subscription, send email, return JSON ...
@@ -63,7 +63,7 @@ class SubscriptionCreateView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-          # 🆕 Subscriber alanı boşsa doldur
+          # If subscriber field is empty, fill it
         if sub.subscriber_id is None:
             sub.subscriber = subscriber
 
@@ -78,8 +78,8 @@ class SubscriptionCreateView(APIView):
                 status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
             )
         
-        # Zaten verify edilmişse:
-        sub.save(update_fields=["subscriber"])  # subscriber set ettiysek
+        # If already verified:
+        sub.save(update_fields=["subscriber"])  # if subscriber was set
         return Response(
             {"status": "already_verified", "subscription_id": sub.id},
             status=status.HTTP_200_OK,
@@ -113,8 +113,7 @@ class SubscriptionDetailView(APIView):
     """
     GET /api/subscriptions/<id>/
 
-    Kullanıcının kayıtlı arama parametrelerini (abstracts, keywords vs.)
-    tekrar çekmek için basit bir endpoint.
+    Simple endpoint to retrieve user's saved search parameters (abstracts, keywords, etc.)
     """
 
     authentication_classes = []
